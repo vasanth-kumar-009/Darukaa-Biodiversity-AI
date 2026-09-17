@@ -1,0 +1,122 @@
+{
+  "knowledge_base": {
+    "name": "Darukaa.Earth Scientific Biodiversity Knowledge Base",
+    "version": "1.0",
+    "description": "Scientific documents and structured environmental data used for biodiversity reasoning."
+  },
+
+  "sources": [
+    {
+      "id": "soil_fao",
+      "file": "knowledge_base/soil/FAO_soil_biodiversity.pdf",
+      "category": "soil",
+      "topics": [
+        "soil biodiversity",
+        "soil organic carbon",
+        "soil health",
+        "soil organisms"
+      ]
+    },
+
+    {
+      "id": "agroforestry_fao",
+      "file": "knowledge_base/land_use/FAO_agroforestry.pdf",
+      "category": "land_use",
+      "topics": [
+        "agroforestry",
+        "land use",
+        "habitat",
+        "crop diversification"
+      ]
+    },
+
+    {
+      "id": "biodiversity_fao",
+      "file": "knowledge_base/biodiversity/FAO_biodiversity.pdf",
+      "category": "biodiversity",
+      "topics": [
+        "biodiversity",
+        "ecosystems",
+        "species",
+        "habitat diversity"
+      ]
+    }
+  ],
+
+  "structured_variables": [
+    {
+      "name": "soil.ph",
+      "type": "numeric",
+      "unit": "pH",
+      "description": "Soil acidity or alkalinity."
+    },
+    {
+      "name": "soil.organic_carbon_percent",
+      "type": "numeric",
+      "unit": "%",
+      "description": "Percentage of soil organic carbon."
+    },
+    {
+      "name": "soil.moisture_percent",
+      "type": "numeric",
+      "unit": "%",
+      "description": "Soil moisture percentage."
+    },
+    {
+      "name": "climate.rainfall_mm_year",
+      "type": "numeric",
+      "unit": "mm/year",
+      "description": "Annual rainfall."
+    },
+    {
+      "name": "climate.temperature_celsius",
+      "type": "numeric",
+      "unit": "°C",
+      "description": "Environmental temperature."
+    },
+    {
+      "name": "land.land_use",
+      "type": "categorical",
+      "description": "Primary land-use type."
+    },
+    {
+      "name": "land.crop_type",
+      "type": "categorical",
+      "description": "Crop or cropping system."
+    },
+    {
+      "name": "biodiversity.species_richness",
+      "type": "categorical",
+      "description": "Qualitative species richness category."
+    },
+    {
+      "name": "biodiversity.habitat_diversity",
+      "type": "categorical",
+      "description": "Qualitative habitat diversity category."
+    },
+    {
+      "name": "human_impact.pollution_level",
+      "type": "categorical",
+      "description": "Qualitative pollution level."
+    },
+    {
+      "name": "human_impact.deforestation_level",
+      "type": "categorical",
+      "description": "Qualitative deforestation level."
+    },
+    {
+      "name": "human_impact.habitat_fragmentation",
+      "type": "categorical",
+      "description": "Qualitative habitat fragmentation level."
+    }
+  ],
+
+  "external_sources": [
+    {
+      "name": "GBIF",
+      "role": "location_biodiversity",
+      "description": "Provides biodiversity occurrence records associated with geographic locations.",
+      "interpretation": "Occurrence records are observations and should not be treated as complete species richness."
+    }
+  ]
+}

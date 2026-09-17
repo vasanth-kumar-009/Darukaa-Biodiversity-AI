@@ -1,0 +1,29 @@
+{
+  "soil": {
+    "ph": null,
+    "organic_carbon_percent": null,
+    "moisture_percent": null
+  },
+  "climate": {
+    "rainfall_mm_year": null,
+    "temperature_celsius": null
+  },
+  "land": {
+    "land_use": null,
+    "crop_type": null
+  },
+  "biodiversity": {
+    "species_richness": null,
+    "habitat_diversity": null
+  },
+  "human_impact": {
+    "pollution_level": null,
+    "deforestation_level": null,
+    "habitat_fragmentation": null
+  },
+  "location": {
+    "latitude": null,
+    "longitude": null,
+    "region": null
+  }
+}

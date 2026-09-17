@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Darukaa.Earth</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="app">
+        <!-- ======================================
+             HEADER
+        ======================================= -->
+        <header>
+            <div>
+                <h1>🌍 Darukaa.Earth</h1>
+                <p>
+                    AI Biodiversity Intelligence
+                </p>
+            </div>
+            <div class="status">
+                <span class="status-dot"></span>
+                System Ready
+            </div>
+        </header>
+
+
+        <!-- ======================================
+             MAIN
+        ======================================= -->
+
+        <main>
+            <!-- ==================================
+                 ENVIRONMENT PANEL
+            =================================== -->
+            <aside class="environment-panel">
+                <h2>Environmental Data</h2>
+                <p class="panel-description">
+                    Provide environmental information
+                    for ecosystem analysis.
+                </p>
+                <!-- SOIL -->
+                <h3>Soil</h3>
+                <label>
+                    pH
+                    <input id="ph" type="number" step="0.1" placeholder="e.g. 6.5">
+                </label>
+                <label>
+                    Organic Carbon (%)
+                    <input id="organic_carbon" type="number" step="0.1" placeholder="e.g. 0.4">
+                </label>
+
+                <label>
+                    Moisture (%)
+
+                    <input id="moisture" type="number" step="0.1" placeholder="e.g. 18">
+
+                </label>
+
+
+                <!-- CLIMATE -->
+
+                <h3>Climate</h3>
+
+                <label>
+                    Annual Rainfall (mm)
+
+                    <input id="rainfall" type="number" placeholder="e.g. 450">
+
+                </label>
+
+
+                <label>
+                    Temperature (°C)
+
+                    <input id="temperature" type="number" step="0.1" placeholder="e.g. 31">
+
+                </label>
+
+
+                <!-- LAND -->
+
+                <h3>Land</h3>
+
+                <label>
+                    Land Use
+
+                    <select id="land_use">
+
+                        <option value="">
+                            Select
+                        </option>
+
+                        <option value="cropland">
+                            Cropland
+                        </option>
+
+                        <option value="forest">
+                            Forest
+                        </option>
+
+                        <option value="grassland">
+                            Grassland
+                        </option>
+
+                        <option value="wetland">
+                            Wetland
+                        </option>
+
+                        <option value="urban">
+                            Urban
+                        </option>
+
+                    </select>
+
+                </label>
+
+
+                <label>
+                    Crop Type
+
+                    <input id="crop_type" type="text" placeholder="e.g. wheat monoculture">
+
+                </label>
+
+
+                <!-- BIODIVERSITY -->
+
+                <h3>Biodiversity</h3>
+
+                <label>
+                    Species Richness
+
+                    <select id="species_richness">
+
+                        <option value="">
+                            Select
+                        </option>
+
+                        <option value="low">
+                            Low
+                        </option>
+
+                        <option value="moderate">
+                            Moderate
+                        </option>
+
+                        <option value="high">
+                            High
+                        </option>
+
+                    </select>
+
+                </label>
+
+
+                <label>
+                    Habitat Diversity
+
+                    <select id="habitat_diversity">
+
+                        <option value="">
+                            Select
+                        </option>
+
+                        <option value="low">
+                            Low
+                        </option>
+
+                        <option value="moderate">
+                            Moderate
+                        </option>
+
+                        <option value="high">
+                            High
+                        </option>
+
+                    </select>
+
+                </label>
+
+
+                <!-- HUMAN IMPACT -->
+
+                <h3>Human Impact</h3>
+
+                <label>
+                    Pollution
+
+                    <select id="pollution">
+
+                        <option value="">
+                            Select
+                        </option>
+
+                        <option value="low">
+                            Low
+                        </option>
+
+                        <option value="moderate">
+                            Moderate
+                        </option>
+
+                        <option value="high">
+                            High
+                        </option>
+
+                    </select>
+
+                </label>
+
+
+                <label>
+                    Deforestation
+
+                    <select id="deforestation">
+
+                        <option value="">
+                            Select
+                        </option>
+
+                        <option value="low">
+                            Low
+                        </option>
+
+                        <option value="moderate">
+                            Moderate
+                        </option>
+
+                        <option value="high">
+                            High
+                        </option>
+
+                    </select>
+
+                </label>
+
+
+                <label>
+                    Habitat Fragmentation
+
+                    <select id="fragmentation">
+
+                        <option value="">
+                            Select
+                        </option>
+
+                        <option value="low">
+                            Low
+                        </option>
+
+                        <option value="moderate">
+                            Moderate
+                        </option>
+
+                        <option value="high">
+                            High
+                        </option>
+
+                    </select>
+
+                </label>
+
+
+                <button id="clearEnvironment" class="secondary-button">
+                    Clear Data
+                </button>
+
+            </aside>
+            <!-- LOCATION -->
+
+            <h3>Location</h3>
+
+            <label>
+                Region
+
+                <input id="region" type="text" placeholder="e.g. Punjab">
+            </label>
+
+            <label>
+                Latitude
+
+                <input id="latitude" type="number" step="0.000001" min="-90" max="90" placeholder="e.g. 30.9010">
+            </label>
+
+            <label>
+                Longitude
+
+                <input id="longitude" type="number" step="0.000001" min="-180" max="180" placeholder="e.g. 75.8573">
+            </label>
+
+            <!-- ==================================
+                 CHAT
+            =================================== -->
+
+            <section class="chat-panel">
+
+                <div id="chatMessages" class="chat-messages">
+
+                    <div class="message assistant">
+
+                        <div class="avatar">
+                            🌱
+                        </div>
+
+                        <div class="message-content">
+
+                            <strong>
+                                Darukaa AI
+                            </strong>
+
+                            <p>
+                                Hello! Provide environmental
+                                information on the left and
+                                ask me about biodiversity,
+                                soil health, habitat or
+                                ecosystem management.
+                            </p>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <!-- ==================================
+                     QUESTION INPUT
+                =================================== -->
+
+                <div class="chat-input-area">
+
+                    <textarea id="question" placeholder="Ask about your ecosystem..." rows="2"></textarea>
+
+                    <button id="sendButton" onclick="sendMessage()">
+                        Send
+                    </button>
+
+                </div>
+
+            </section>
+
+        </main>
+
+    </div>
+
+
+    <script src="script.js"></script>
+
+</body>
+
+</html>

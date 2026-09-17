@@ -1,0 +1,95 @@
+[
+  {
+    "id": "site_001",
+    "region": "Punjab",
+    "soil": {
+      "ph": 6.5,
+      "organic_carbon_percent": 0.3,
+      "moisture_percent": 15
+    },
+    "climate": {
+      "rainfall_mm_year": 450,
+      "temperature_celsius": 31
+    },
+    "land": {
+      "land_use": "cropland",
+      "crop_type": "wheat_monoculture"
+    },
+    "biodiversity": {
+      "species_richness": "low",
+      "habitat_diversity": "low"
+    },
+    "human_impact": {
+      "pollution_level": "moderate",
+      "deforestation_level": "low",
+      "habitat_fragmentation": "moderate"
+    },
+    "location": {
+      "latitude": 30.901,
+      "longitude": 75.8573,
+      "region": "Punjab"
+    }
+  },
+  {
+    "id": "site_002",
+    "region": "Haryana",
+    "soil": {
+      "ph": 7.2,
+      "organic_carbon_percent": 0.8,
+      "moisture_percent": 25
+    },
+    "climate": {
+      "rainfall_mm_year": 600,
+      "temperature_celsius": 30
+    },
+    "land": {
+      "land_use": "cropland",
+      "crop_type": "wheat_rice_rotation"
+    },
+    "biodiversity": {
+      "species_richness": "moderate",
+      "habitat_diversity": "moderate"
+    },
+    "human_impact": {
+      "pollution_level": "moderate",
+      "deforestation_level": "low",
+      "habitat_fragmentation": "moderate"
+    },
+    "location": {
+      "latitude": 29.0588,
+      "longitude": 76.0856,
+      "region": "Haryana"
+    }
+  },
+  {
+    "id": "site_003",
+    "region": "Uttarakhand",
+    "soil": {
+      "ph": 6.8,
+      "organic_carbon_percent": 1.5,
+      "moisture_percent": 45
+    },
+    "climate": {
+      "rainfall_mm_year": 1500,
+      "temperature_celsius": 24
+    },
+    "land": {
+      "land_use": "mixed_landscape",
+      "crop_type": "mixed_cropping"
+    },
+    "biodiversity": {
+      "species_richness": "high",
+      "habitat_diversity": "high"
+    },
+    "human_impact": {
+      "pollution_level": "low",
+      "deforestation_level": "low",
+      "habitat_fragmentation": "low"
+    },
+    "location": {
+      "latitude": 30.0668,
+      "longitude": 79.0193,
+      "region": "Uttarakhand"
+    }
+  }
+]
