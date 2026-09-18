@@ -1,7 +1,3 @@
-# ============================================================
-# DARUKAA.EARTH - BIODIVERSITY INTELLIGENCE API
-# ============================================================
-
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
@@ -11,6 +7,16 @@ from fastapi.staticfiles import StaticFiles
 
 from pydantic import BaseModel, Field
 
+from backend.validation import validate_environment
+from backend.memory import (
+    get_conversation,
+    update_environment,
+    add_message,
+    format_chat_history,
+)
+from backend.biodiversity_pipeline import run_pipeline
+
+
 # ============================================================
 # PROJECT PATHS
 # ============================================================
@@ -18,24 +24,7 @@ from pydantic import BaseModel, Field
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 FRONTEND_DIR = PROJECT_ROOT / "frontend"
-
 FRONTEND_INDEX = FRONTEND_DIR / "index.html"
-
-
-# ============================================================
-# INTERNAL MODULES
-# ============================================================
-
-from backend.validation import validate_environment
-
-from backend.memory import (
-    get_conversation,
-    update_environment,
-    add_message,
-    format_chat_history
-)
-
-from backend.biodiversity_pipeline import run_pipeline
 
 
 # ============================================================
@@ -44,20 +33,17 @@ from backend.biodiversity_pipeline import run_pipeline
 
 app = FastAPI(
     title="Darukaa.Earth Biodiversity Intelligence API",
-
     description=(
-        "AI-powered biodiversity and environmental "
-        "intelligence system using scientific RAG, "
-        "environmental reasoning, structured knowledge, "
-        "GBIF biodiversity data, and Gemini."
+        "AI-powered biodiversity intelligence system combining "
+        "environmental reasoning, scientific RAG, structured "
+        "environmental knowledge and biodiversity observations."
     ),
-
-    version="1.0.0"
+    version="1.0.0",
 )
 
 
 # ============================================================
-# STATIC FRONTEND FILES
+# STATIC FRONTEND
 # ============================================================
 
 if FRONTEND_DIR.exists():
@@ -65,7 +51,7 @@ if FRONTEND_DIR.exists():
     app.mount(
         "/static",
         StaticFiles(directory=str(FRONTEND_DIR)),
-        name="static"
+        name="static",
     )
 
 
@@ -77,13 +63,13 @@ app.add_middleware(
     CORSMiddleware,
 
     allow_origins=[
-        "http://127.0.0.1:5500",
         "http://localhost:5500",
+        "http://127.0.0.1:5500",
 
-        "http://127.0.0.1:8000",
         "http://localhost:8000",
+        "http://127.0.0.1:8000",
 
-        "https://darukaa-biodiversity-ai.vercel.app"
+        "https://darukaa-biodiversity-ai.vercel.app",
     ],
 
     allow_credentials=True,
@@ -98,21 +84,25 @@ app.add_middleware(
 # PYDANTIC MODELS
 # ============================================================
 
+
 class Soil(BaseModel):
 
     ph: float | None = Field(
         default=None,
-        description="Soil pH"
+        ge=0,
+        le=14,
     )
 
     organic_carbon_percent: float | None = Field(
         default=None,
-        description="Soil organic carbon percentage"
+        ge=0,
+        le=100,
     )
 
     moisture_percent: float | None = Field(
         default=None,
-        description="Soil moisture percentage"
+        ge=0,
+        le=100,
     )
 
 
@@ -120,81 +110,55 @@ class Climate(BaseModel):
 
     rainfall_mm_year: float | None = Field(
         default=None,
-        description="Annual rainfall in millimeters"
+        ge=0,
+        le=20000,
     )
 
     temperature_celsius: float | None = Field(
         default=None,
-        description="Average temperature in Celsius"
+        ge=-100,
+        le=70,
     )
 
 
 class Land(BaseModel):
 
-    land_use: str | None = Field(
-        default=None,
-        description="Land use category"
-    )
+    land_use: str | None = None
 
-    crop_type: str | None = Field(
-        default=None,
-        description="Crop type or cropping system"
-    )
+    crop_type: str | None = None
 
 
 class Biodiversity(BaseModel):
 
-    species_richness: str | None = Field(
-        default=None,
-        description=(
-            "Species richness: low, moderate, "
-            "medium, or high"
-        )
-    )
+    species_richness: str | None = None
 
-    habitat_diversity: str | None = Field(
-        default=None,
-        description=(
-            "Habitat diversity: low, moderate, "
-            "medium, or high"
-        )
-    )
+    habitat_diversity: str | None = None
 
 
 class HumanImpact(BaseModel):
 
-    pollution_level: str | None = Field(
-        default=None,
-        description="Pollution level"
-    )
+    pollution_level: str | None = None
 
-    deforestation_level: str | None = Field(
-        default=None,
-        description="Deforestation level"
-    )
+    deforestation_level: str | None = None
 
-    habitat_fragmentation: str | None = Field(
-        default=None,
-        description="Habitat fragmentation level"
-    )
+    habitat_fragmentation: str | None = None
 
 
 class Location(BaseModel):
 
     latitude: float | None = Field(
         default=None,
-        description="Latitude"
+        ge=-90,
+        le=90,
     )
 
     longitude: float | None = Field(
         default=None,
-        description="Longitude"
+        ge=-180,
+        le=180,
     )
 
-    region: str | None = Field(
-        default=None,
-        description="Region name"
-    )
+    region: str | None = None
 
 
 class EnvironmentalProfile(BaseModel):
@@ -229,7 +193,7 @@ class BiodiversityRequest(BaseModel):
     question: str = Field(
         ...,
         min_length=1,
-        description="Environmental or biodiversity question"
+        description="User's biodiversity/environment question",
     )
 
     environment: EnvironmentalProfile
@@ -240,129 +204,83 @@ class ChatRequest(BaseModel):
     session_id: str = Field(
         ...,
         min_length=1,
-        description="Conversation session identifier"
     )
 
     question: str = Field(
         ...,
         min_length=1,
-        description="User question"
     )
 
     environment: EnvironmentalProfile | None = None
 
 
 # ============================================================
-# HELPER FUNCTIONS
+# HELPERS
 # ============================================================
 
+
 def profile_to_dict(
-    profile: EnvironmentalProfile
-):
-    """
-    Convert Pydantic environmental profile
-    into a normal Python dictionary.
-    """
+    profile: EnvironmentalProfile,
+) -> dict:
 
     return profile.model_dump()
 
 
 def validate_profile(
-    profile_dict
-):
-    """
-    Run the project's custom environmental validation.
-    """
+    profile: dict,
+) -> dict:
 
     try:
 
-        validation_result = validate_environment(
-            profile_dict
+        result = validate_environment(
+            profile
         )
 
-    except Exception as e:
+        return result
 
-        raise HTTPException(
-            status_code=500,
-            detail=(
-                "Environmental validation failed: "
-                f"{str(e)}"
-            )
-        )
+    except Exception as exc:
 
-    if not validation_result.get(
-        "valid",
-        False
-    ):
-
-        raise HTTPException(
-            status_code=422,
-
-            detail={
-                "message": "Invalid environmental data",
-
-                "errors": validation_result.get(
-                    "errors",
-                    []
-                ),
-
-                "warnings": validation_result.get(
-                    "warnings",
-                    []
-                ),
-
-                "completeness_percent":
-                    validation_result.get(
-                        "completeness_percent",
-                        0
-                    )
-            }
-        )
-
-    return validation_result
+        return {
+            "valid": False,
+            "errors": [
+                f"Validation error: {str(exc)}"
+            ],
+            "warnings": [],
+            "completeness_percent": 0,
+        }
 
 
 # ============================================================
 # ROOT / FRONTEND
 # ============================================================
 
+
 @app.get(
     "/",
-    include_in_schema=False
+    include_in_schema=False,
 )
 async def root():
 
     """
-    Serve the Darukaa.Earth frontend.
+    Serve the frontend application.
 
-    The browser opens:
+    On Vercel, this allows:
+        https://your-domain.vercel.app/
 
-        /
-
-    and FastAPI returns:
-
-        frontend/index.html
+    to directly display frontend/index.html.
     """
 
     if FRONTEND_INDEX.exists():
 
         return FileResponse(
             str(FRONTEND_INDEX),
-            media_type="text/html"
+            media_type="text/html",
         )
 
     return {
-        "name":
-            "Darukaa.Earth Biodiversity Intelligence API",
-
-        "status":
-            "running",
-
-        "version":
-            "1.0.0",
-
-        "message":
-            "Frontend index.html was not found."
+        "message": "Darukaa.Earth API is running",
+        "status": "online",
+        "docs": "/docs",
     }
 
 
@@ -370,33 +288,36 @@ async def root():
 # HEALTH
 # ============================================================
 
+
 @app.get("/health")
 async def health():
 
     return {
         "status": "healthy",
-
-        "service":
-            "Darukaa.Earth Biodiversity Intelligence API"
+        "service": "Darukaa.Earth",
+        "version": "1.0.0",
     }
 
 
 # ============================================================
-# API INFORMATION
+# INFO
 # ============================================================
+
 
 @app.get("/info")
 async def info():
 
     return {
 
-        "name":
-            "Darukaa.Earth Biodiversity Intelligence API",
+        "name": "Darukaa.Earth",
 
-        "version":
-            "1.0.0",
+        "description": (
+            "AI Biodiversity Intelligence System"
+        ),
 
-        "features": [
+        "components": [
+
+            "Environmental validation",
 
             "Environmental reasoning",
 
@@ -404,31 +325,38 @@ async def info():
 
             "Structured environmental knowledge",
 
-            "Evidence-backed recommendations",
-
-            "Multi-metric reasoning",
-
             "GBIF biodiversity observations",
 
-            "Gemini-powered response generation",
+            "Gemini AI",
 
             "Conversational memory",
-
-            "Structured JSON input"
         ],
 
-        "knowledge_sources": [
+        "input_variables": [
 
-            "FAO soil biodiversity literature",
+            "soil",
 
-            "FAO agroforestry literature",
+            "climate",
 
-            "FAO biodiversity literature",
+            "land",
 
-            "Structured environmental dataset",
+            "biodiversity",
 
-            "GBIF biodiversity observations"
-        ]
+            "human_impact",
+
+            "location",
+        ],
+
+        "location_support": {
+
+            "region": True,
+
+            "latitude": True,
+
+            "longitude": True,
+
+            "gbif_integration": True,
+        },
     }
 
 
@@ -436,54 +364,78 @@ async def info():
 # ANALYZE
 # ============================================================
 
+
 @app.post("/analyze")
 async def analyze(
-    request: BiodiversityRequest
+    request: BiodiversityRequest,
 ):
 
     """
-    Analyze a structured environmental profile.
+    Analyze an environmental profile.
 
-    Pipeline:
+    Flow:
 
+        Input
+          ↓
         Validation
-            ↓
+          ↓
         Environmental reasoning
-            ↓
+          ↓
         Scientific RAG
-            ↓
+          ↓
         Structured knowledge
-            ↓
-        GBIF
-            ↓
-        Gemini
-            ↓
-        Evidence-backed recommendations
+          ↓
+        GBIF location biodiversity
+          ↓
+        Gemini response
     """
 
+    # --------------------------------------------------------
+    # Convert Pydantic model to dictionary
+    # --------------------------------------------------------
+
+    profile = profile_to_dict(
+        request.environment
+    )
+
+
+    # --------------------------------------------------------
+    # Validate environment
+    # --------------------------------------------------------
+
+    validation = validate_profile(
+        profile
+    )
+
+
+    if not validation.get("valid", False):
+
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "message": "Invalid environmental data",
+                "errors": validation.get(
+                    "errors",
+                    [],
+                ),
+                "warnings": validation.get(
+                    "warnings",
+                    [],
+                ),
+                "completeness_percent":
+                    validation.get(
+                        "completeness_percent",
+                        0,
+                    ),
+            },
+        )
+
+
+    # --------------------------------------------------------
+    # Run biodiversity pipeline
+    # --------------------------------------------------------
+
     try:
-
-        # ----------------------------------------------------
-        # Convert request
-        # ----------------------------------------------------
-
-        profile = profile_to_dict(
-            request.environment
-        )
-
-
-        # ----------------------------------------------------
-        # Validate
-        # ----------------------------------------------------
-
-        data_quality = validate_profile(
-            profile
-        )
-
-
-        # ----------------------------------------------------
-        # Run complete pipeline
-        # ----------------------------------------------------
 
         result = run_pipeline(
 
@@ -491,173 +443,217 @@ async def analyze(
 
             user_question=request.question,
 
-            chat_history=None
+            chat_history=None,
         )
 
+    except Exception as exc:
 
-        # ----------------------------------------------------
-        # Return response
-        # ----------------------------------------------------
-
-        return {
-
-            "success": True,
-
-            "question":
-                request.question,
-
-            "environment":
-                profile,
-
-            "analysis":
-                result.get(
-                    "analysis",
-                    {}
-                ),
-
-            "response":
-                result.get(
-                    "response",
-                    {}
-                ),
-
-            "scientific_evidence":
-                result.get(
-                    "scientific_evidence",
-                    []
-                ),
-
-            "location_biodiversity":
-                result.get(
-                    "location_biodiversity",
-                    {}
-                ),
-
-            "structured_knowledge":
-                result.get(
-                    "structured_knowledge",
-                    {}
-                ),
-
-            "data_quality":
-                data_quality
-        }
-
-
-    except HTTPException:
-
-        raise
-
-
-    except Exception as e:
-
-        print()
-        print("=" * 60)
-        print("ERROR IN /analyze")
-        print("=" * 60)
-        print(str(e))
-        print("=" * 60)
+        print(
+            "ERROR in /analyze:",
+            repr(exc),
+        )
 
         raise HTTPException(
+
             status_code=500,
-            detail=str(e)
+
+            detail=(
+                "Biodiversity analysis failed: "
+                f"{str(exc)}"
+            ),
         )
+
+
+    # --------------------------------------------------------
+    # Return result
+    # --------------------------------------------------------
+
+    return {
+
+        "success": True,
+
+        "question": request.question,
+
+        "environment": profile,
+
+        "analysis":
+            result.get(
+                "analysis",
+                {},
+            ),
+
+        "response":
+            result.get(
+                "response",
+                {},
+            ),
+
+        "scientific_evidence":
+            result.get(
+                "scientific_evidence",
+                [],
+            ),
+
+        "location_biodiversity":
+            result.get(
+                "location_biodiversity",
+                {},
+            ),
+
+        "structured_knowledge":
+            result.get(
+                "structured_knowledge",
+                {},
+            ),
+
+        "data_quality":
+            validation,
+    }
 
 
 # ============================================================
 # CHAT
 # ============================================================
 
+
 @app.post("/chat")
 async def chat(
-    request: ChatRequest
+    request: ChatRequest,
 ):
 
     """
-    Conversational biodiversity analysis.
+    Multi-turn biodiversity conversation.
 
-    Maintains:
+    The conversation stores:
 
         - environmental context
         - user messages
         - assistant messages
-        - session history
+
+    Memory is currently in-memory and therefore
+    resets when the server restarts.
     """
 
-    try:
+    # --------------------------------------------------------
+    # Get/create conversation
+    # --------------------------------------------------------
 
-        # ----------------------------------------------------
-        # Get conversation
-        # ----------------------------------------------------
+    conversation = get_conversation(
+        request.session_id
+    )
 
-        conversation = get_conversation(
-            request.session_id
+
+    # --------------------------------------------------------
+    # Update environment if supplied
+    # --------------------------------------------------------
+
+    if request.environment is not None:
+
+        profile = profile_to_dict(
+            request.environment
         )
 
-
-        # ----------------------------------------------------
-        # Update environment if provided
-        # ----------------------------------------------------
-
-        if request.environment is not None:
-
-            profile = profile_to_dict(
-                request.environment
-            )
-
-            update_environment(
-                request.session_id,
-                profile
-            )
-
-
-        # ----------------------------------------------------
-        # Get current environment
-        # ----------------------------------------------------
-
-        conversation = get_conversation(
-            request.session_id
+        update_environment(
+            request.session_id,
+            profile,
         )
+
+    else:
 
         profile = conversation.get(
             "environment",
-            {}
+            {},
         )
 
 
-        # ----------------------------------------------------
-        # Validate environment
-        # ----------------------------------------------------
+    # --------------------------------------------------------
+    # Ensure profile exists
+    # --------------------------------------------------------
 
-        data_quality = validate_profile(
-            profile
+    if not profile:
+
+        raise HTTPException(
+
+            status_code=400,
+
+            detail=(
+                "Environmental information is required. "
+                "Please provide environment data first."
+            ),
         )
 
 
-        # ----------------------------------------------------
-        # Add user message
-        # ----------------------------------------------------
+    # --------------------------------------------------------
+    # Validate environment
+    # --------------------------------------------------------
 
-        add_message(
-            request.session_id,
-            "user",
-            request.question
+    validation = validate_profile(
+        profile
+    )
+
+
+    if not validation.get("valid", False):
+
+        raise HTTPException(
+
+            status_code=422,
+
+            detail={
+                "message":
+                    "Invalid environmental data",
+
+                "errors":
+                    validation.get(
+                        "errors",
+                        [],
+                    ),
+
+                "warnings":
+                    validation.get(
+                        "warnings",
+                        [],
+                    ),
+
+                "completeness_percent":
+                    validation.get(
+                        "completeness_percent",
+                        0,
+                    ),
+            },
         )
 
 
-        # ----------------------------------------------------
-        # Get chat history
-        # ----------------------------------------------------
+    # --------------------------------------------------------
+    # Save user message
+    # --------------------------------------------------------
 
-        chat_history = format_chat_history(
-            request.session_id,
-            max_messages=10
-        )
+    add_message(
+
+        request.session_id,
+
+        "user",
+
+        request.question,
+    )
 
 
-        # ----------------------------------------------------
-        # Run pipeline
-        # ----------------------------------------------------
+    # --------------------------------------------------------
+    # Build conversation history
+    # --------------------------------------------------------
+
+    chat_history = format_chat_history(
+
+        request.session_id,
+
+        max_messages=10,
+    )
+
+
+    # --------------------------------------------------------
+    # Run pipeline
+    # --------------------------------------------------------
+
+    try:
 
         result = run_pipeline(
 
@@ -665,109 +661,127 @@ async def chat(
 
             user_question=request.question,
 
-            chat_history=chat_history
+            chat_history=chat_history,
         )
 
+    except Exception as exc:
 
-        assistant_response = result.get(
-            "response",
-            {}
+        print(
+            "ERROR in /chat:",
+            repr(exc),
         )
-
-
-        # ----------------------------------------------------
-        # Save assistant response
-        # ----------------------------------------------------
-
-        add_message(
-            request.session_id,
-            "assistant",
-            assistant_response
-        )
-
-
-        # ----------------------------------------------------
-        # Return
-        # ----------------------------------------------------
-
-        return {
-
-            "success": True,
-
-            "session_id":
-                request.session_id,
-
-            "question":
-                request.question,
-
-            "environment":
-                profile,
-
-            "response":
-                assistant_response,
-
-            "analysis":
-                result.get(
-                    "analysis",
-                    {}
-                ),
-
-            "scientific_evidence":
-                result.get(
-                    "scientific_evidence",
-                    []
-                ),
-
-            "location_biodiversity":
-                result.get(
-                    "location_biodiversity",
-                    {}
-                ),
-
-            "structured_knowledge":
-                result.get(
-                    "structured_knowledge",
-                    {}
-                ),
-
-            "data_quality":
-                data_quality
-        }
-
-
-    except HTTPException:
-
-        raise
-
-
-    except Exception as e:
-
-        print()
-        print("=" * 60)
-        print("ERROR IN /chat")
-        print("=" * 60)
-        print(str(e))
-        print("=" * 60)
 
         raise HTTPException(
+
             status_code=500,
-            detail=str(e)
+
+            detail=(
+                "Chat processing failed: "
+                f"{str(exc)}"
+            ),
         )
 
 
+    # --------------------------------------------------------
+    # Extract response
+    # --------------------------------------------------------
+
+    response = result.get(
+        "response",
+        {},
+    )
+
+
+    # --------------------------------------------------------
+    # Save assistant response
+    # --------------------------------------------------------
+
+    if isinstance(response, dict):
+
+        assistant_message = response.get(
+            "assessment",
+            str(response),
+        )
+
+    else:
+
+        assistant_message = str(
+            response
+        )
+
+
+    add_message(
+
+        request.session_id,
+
+        "assistant",
+
+        assistant_message,
+    )
+
+
+    # --------------------------------------------------------
+    # Return response
+    # --------------------------------------------------------
+
+    return {
+
+        "success": True,
+
+        "session_id":
+            request.session_id,
+
+        "question":
+            request.question,
+
+        "environment":
+            profile,
+
+        "response":
+            response,
+
+        "analysis":
+            result.get(
+                "analysis",
+                {},
+            ),
+
+        "scientific_evidence":
+            result.get(
+                "scientific_evidence",
+                [],
+            ),
+
+        "location_biodiversity":
+            result.get(
+                "location_biodiversity",
+                {},
+            ),
+
+        "structured_knowledge":
+            result.get(
+                "structured_knowledge",
+                {},
+            ),
+
+        "data_quality":
+            validation,
+    }
+
+
 # ============================================================
-# STARTUP MESSAGE
+# STARTUP
 # ============================================================
+
 
 @app.on_event("startup")
 async def startup_event():
 
-    print()
-    print("=" * 60)
-    print("DARUKAA.EARTH BIODIVERSITY AI")
     print("=" * 60)
 
-    print("API started successfully.")
+    print(
+        "Darukaa.Earth API starting..."
+    )
 
     print(
         f"Project root: {PROJECT_ROOT}"
@@ -778,12 +792,16 @@ async def startup_event():
     )
 
     print(
-        f"Frontend index: {FRONTEND_INDEX}"
+        f"Frontend index exists: "
+        f"{FRONTEND_INDEX.exists()}"
     )
 
     print(
-        f"Frontend available: "
-        f"{FRONTEND_INDEX.exists()}"
+        "Location support: Region + Latitude + Longitude"
+    )
+
+    print(
+        "Ready."
     )
 
     print("=" * 60)
