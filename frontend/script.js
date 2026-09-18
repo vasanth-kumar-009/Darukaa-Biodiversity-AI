@@ -20,9 +20,11 @@ const API_BASE_URL =
 // SESSION ID
 // ============================================================
 
-let sessionId = localStorage.getItem("darukaa_session_id");
+let sessionId =
+    localStorage.getItem("darukaa_session_id");
 
 if (!sessionId) {
+
     sessionId =
         "session_" +
         Date.now() +
@@ -39,7 +41,7 @@ if (!sessionId) {
 
 
 // ============================================================
-// DOM HELPERS
+// DOM HELPER
 // ============================================================
 
 function getElement(id) {
@@ -96,7 +98,8 @@ function safeValue(
 
 function getInputValue(id) {
 
-    const element = getElement(id);
+    const element =
+        getElement(id);
 
     if (!element) {
         return null;
@@ -130,7 +133,7 @@ function getNumberValue(id) {
 
 
 // ============================================================
-// BUILD ENVIRONMENT
+// BUILD ENVIRONMENT PROFILE
 // ============================================================
 
 function buildEnvironment() {
@@ -153,7 +156,6 @@ function buildEnvironment() {
                 )
         },
 
-
         climate: {
 
             rainfall_mm_year:
@@ -166,7 +168,6 @@ function buildEnvironment() {
                     "temperature"
                 )
         },
-
 
         land: {
 
@@ -181,7 +182,6 @@ function buildEnvironment() {
                 )
         },
 
-
         biodiversity: {
 
             species_richness:
@@ -194,7 +194,6 @@ function buildEnvironment() {
                     "habitatDiversity"
                 )
         },
-
 
         human_impact: {
 
@@ -213,7 +212,6 @@ function buildEnvironment() {
                     "habitatFragmentation"
                 )
         },
-
 
         location: {
 
@@ -264,23 +262,11 @@ async function apiRequest(
     }
 
 
-    console.log(
-        "API Request:",
-        API_BASE_URL + endpoint
-    );
-
-
     const response =
         await fetch(
             API_BASE_URL + endpoint,
             options
         );
-
-
-    console.log(
-        "API Status:",
-        response.status
-    );
 
 
     let data;
@@ -328,90 +314,13 @@ async function apiRequest(
 
 
 // ============================================================
-// STATUS MESSAGE
-// ============================================================
-
-function showStatus(
-    message,
-    type = "info"
-) {
-
-    let status =
-        getElement("statusMessage");
-
-
-    if (!status) {
-
-        const buttonContainer =
-            document.querySelector(
-                ".buttons"
-            );
-
-
-        if (buttonContainer) {
-
-            status =
-                document.createElement(
-                    "div"
-                );
-
-            status.id =
-                "statusMessage";
-
-            status.style.marginTop =
-                "15px";
-
-            status.style.padding =
-                "10px 14px";
-
-            status.style.borderRadius =
-                "8px";
-
-            status.style.fontSize =
-                "14px";
-
-            buttonContainer.appendChild(
-                status
-            );
-        }
-    }
-
-
-    if (!status) {
-        return;
-    }
-
-
-    status.textContent =
-        message;
-
-
-    if (type === "error") {
-
-        status.style.color =
-            "#b91c1c";
-
-    } else if (type === "success") {
-
-        status.style.color =
-            "#166534";
-
-    } else {
-
-        status.style.color =
-            "#374151";
-    }
-}
-
-
-// ============================================================
 // BUTTON LOADING
 // ============================================================
 
 function setLoading(
     button,
     loading,
-    text = "Processing..."
+    loadingText = "Analyzing..."
 ) {
 
     if (!button) {
@@ -425,7 +334,7 @@ function setLoading(
             button.textContent;
 
         button.textContent =
-            text;
+            loadingText;
 
         button.disabled =
             true;
@@ -434,7 +343,7 @@ function setLoading(
 
         button.textContent =
             button.dataset.originalText ||
-            "Analyze Environment";
+            "🔍 Analyze Environment";
 
         button.disabled =
             false;
@@ -443,7 +352,7 @@ function setLoading(
 
 
 // ============================================================
-// FORMAT UNKNOWN VALUES
+// FORMAT OBJECT VALUE
 // ============================================================
 
 function formatObjectValue(value) {
@@ -456,15 +365,12 @@ function formatObjectValue(value) {
     }
 
 
-    if (typeof value === "string") {
-        return escapeHTML(value);
-    }
-
-
     if (
+        typeof value === "string" ||
         typeof value === "number" ||
         typeof value === "boolean"
     ) {
+
         return escapeHTML(value);
     }
 
@@ -479,21 +385,20 @@ function formatObjectValue(value) {
     }
 
 
-    if (typeof value === "object") {
+    if (
+        typeof value === "object"
+    ) {
 
         return Object.entries(value)
             .map(
-                ([key, val]) => {
-
-                    return `
-                        <div>
-                            <strong>
-                                ${escapeHTML(key)}:
-                            </strong>
-                            ${formatObjectValue(val)}
-                        </div>
-                    `;
-                }
+                ([key, val]) => `
+                    <div>
+                        <strong>
+                            ${escapeHTML(key)}:
+                        </strong>
+                        ${formatObjectValue(val)}
+                    </div>
+                `
             )
             .join("");
     }
@@ -509,9 +414,7 @@ function formatObjectValue(value) {
 // RENDER FINDINGS
 // ============================================================
 
-function renderFindings(
-    findings
-) {
+function renderFindings(findings) {
 
     if (
         !Array.isArray(findings) ||
@@ -537,14 +440,17 @@ function renderFindings(
 
                     return `
                         <div class="finding-item">
-                            <strong>
+
+                            <h4>
                                 Finding ${index + 1}
-                            </strong>
+                            </h4>
+
                             <p>
                                 ${escapeHTML(
                                     finding
                                 )}
                             </p>
+
                         </div>
                     `;
                 }
@@ -594,6 +500,7 @@ function renderFindings(
                                             <strong>
                                                 Severity:
                                             </strong>
+
                                             ${escapeHTML(
                                                 severity
                                             )}
@@ -621,9 +528,11 @@ function renderFindings(
 
                 return `
                     <div class="finding-item">
+
                         ${formatObjectValue(
                             finding
                         )}
+
                     </div>
                 `;
             }
@@ -633,7 +542,7 @@ function renderFindings(
 
 
 // ============================================================
-// RENDER INTERACTIONS
+// RENDER MULTI-METRIC INTERACTIONS
 // ============================================================
 
 function renderInteractions(
@@ -664,14 +573,17 @@ function renderInteractions(
 
                     return `
                         <div class="interaction-item">
+
                             <h4>
                                 Interaction ${index + 1}
                             </h4>
+
                             <p>
                                 ${escapeHTML(
                                     interaction
                                 )}
                             </p>
+
                         </div>
                     `;
                 }
@@ -724,9 +636,11 @@ function renderInteractions(
 
                 return `
                     <div class="interaction-item">
+
                         ${formatObjectValue(
                             interaction
                         )}
+
                     </div>
                 `;
             }
@@ -828,7 +742,6 @@ function renderRecommendations(
                             )}
                         </h4>
 
-
                         ${
                             why
                                 ? `
@@ -847,7 +760,6 @@ function renderRecommendations(
                                 : ""
                         }
 
-
                         ${
                             metrics.length > 0
                                 ? `
@@ -857,13 +769,12 @@ function renderRecommendations(
                                         </strong>
                                     </p>
 
-                                    <div>
+                                    <div class="metric-list">
+
                                         ${metrics
                                             .map(
                                                 metric => `
-                                                    <span
-                                                        class="metric-tag"
-                                                    >
+                                                    <span class="metric-tag">
                                                         ${escapeHTML(
                                                             metric
                                                         )}
@@ -871,11 +782,11 @@ function renderRecommendations(
                                                 `
                                             )
                                             .join("")}
+
                                     </div>
                                 `
                                 : ""
                         }
-
 
                         ${
                             timeHorizon
@@ -884,6 +795,7 @@ function renderRecommendations(
                                         <strong>
                                             Time horizon:
                                         </strong>
+
                                         ${escapeHTML(
                                             timeHorizon
                                         )}
@@ -892,7 +804,6 @@ function renderRecommendations(
                                 : ""
                         }
 
-
                         ${
                             confidence
                                 ? `
@@ -900,6 +811,7 @@ function renderRecommendations(
                                         <strong>
                                             Confidence:
                                         </strong>
+
                                         ${escapeHTML(
                                             confidence
                                         )}
@@ -995,7 +907,10 @@ function renderScientificEvidence(
                             <strong>
                                 Page:
                             </strong>
-                            ${escapeHTML(page)}
+
+                            ${escapeHTML(
+                                page
+                            )}
                         </p>
 
                         ${
@@ -1019,7 +934,7 @@ function renderScientificEvidence(
 
 
 // ============================================================
-// RENDER LOCATION BIODIVERSITY
+// RENDER LOCATION BIODIVERSITY / GBIF
 // ============================================================
 
 function renderLocationBiodiversity(
@@ -1077,7 +992,6 @@ function renderLocationBiodiversity(
 
     const returnedRecords =
         gbif.returned_records ??
-        gbif.limit ??
         0;
 
 
@@ -1119,13 +1033,11 @@ function renderLocationBiodiversity(
 
     const latitude =
         gbif.latitude ??
-        gbif.center_latitude ??
         null;
 
 
     const longitude =
         gbif.longitude ??
-        gbif.center_longitude ??
         null;
 
 
@@ -1140,28 +1052,37 @@ function renderLocationBiodiversity(
         <div class="gbif-summary">
 
             <div class="gbif-stat">
+
                 <strong>
-                    ${escapeHTML(recordCount)}
+                    ${escapeHTML(
+                        recordCount
+                    )}
                 </strong>
 
                 <span>
                     GBIF records
                 </span>
+
             </div>
 
 
             <div class="gbif-stat">
+
                 <strong>
-                    ${escapeHTML(returnedRecords)}
+                    ${escapeHTML(
+                        returnedRecords
+                    )}
                 </strong>
 
                 <span>
                     Records returned
                 </span>
+
             </div>
 
 
             <div class="gbif-stat">
+
                 <strong>
                     ${escapeHTML(
                         observedTaxaCount
@@ -1171,6 +1092,7 @@ function renderLocationBiodiversity(
                 <span>
                     Observed taxa
                 </span>
+
             </div>
 
         </div>
@@ -1181,12 +1103,17 @@ function renderLocationBiodiversity(
             longitude !== null
                 ? `
                     <p>
+
                         <strong>
                             Search location:
                         </strong>
 
-                        ${escapeHTML(latitude)},
-                        ${escapeHTML(longitude)}
+                        ${escapeHTML(
+                            latitude
+                        )},
+                        ${escapeHTML(
+                            longitude
+                        )}
 
                         ${
                             radius !== null
@@ -1197,6 +1124,7 @@ function renderLocationBiodiversity(
                                 `
                                 : ""
                         }
+
                     </p>
                 `
                 : ""
@@ -1206,11 +1134,13 @@ function renderLocationBiodiversity(
         ${
             observedTaxa.length > 0
                 ? `
+
                     <h4>
                         Observed taxa
                     </h4>
 
                     <ul>
+
                         ${observedTaxa
                             .slice(0, 20)
                             .map(
@@ -1223,18 +1153,20 @@ function renderLocationBiodiversity(
                                 `
                             )
                             .join("")}
+
                     </ul>
 
                     ${
                         observedTaxa.length > 20
                             ? `
                                 <small>
-                                    Showing first
+                                    Showing the first
                                     20 observed taxa.
                                 </small>
                             `
                             : ""
                     }
+
                 `
                 : `
                     <p>
@@ -1246,12 +1178,17 @@ function renderLocationBiodiversity(
 
 
         <p>
-            <strong>Note:</strong>
+
+            <strong>
+                Note:
+            </strong>
+
             GBIF occurrence records provide
             geographic biodiversity context.
             They are not a complete measurement
             of true species richness, and missing
             observations do not prove species absence.
+
         </p>
 
     `;
@@ -1285,7 +1222,9 @@ function renderLocation(
     if (
         !region &&
         latitude === null &&
-        longitude === null
+        latitude === undefined &&
+        longitude === null &&
+        longitude === undefined
     ) {
 
         return `
@@ -1304,12 +1243,15 @@ function renderLocation(
                 region
                     ? `
                         <p>
+
                             <strong>
                                 Region:
                             </strong>
+
                             ${escapeHTML(
                                 region
                             )}
+
                         </p>
                     `
                     : ""
@@ -1321,12 +1263,15 @@ function renderLocation(
                 latitude !== undefined
                     ? `
                         <p>
+
                             <strong>
                                 Latitude:
                             </strong>
+
                             ${escapeHTML(
                                 latitude
                             )}
+
                         </p>
                     `
                     : ""
@@ -1338,12 +1283,15 @@ function renderLocation(
                 longitude !== undefined
                     ? `
                         <p>
+
                             <strong>
                                 Longitude:
                             </strong>
+
                             ${escapeHTML(
                                 longitude
                             )}
+
                         </p>
                     `
                     : ""
@@ -1377,6 +1325,7 @@ function renderDataLimitations(
 
 
     return `
+
         <ul>
 
             ${limitations
@@ -1403,7 +1352,9 @@ function renderDataLimitations(
 
                         return `
                             <li>
-                                ${escapeHTML(item)}
+                                ${escapeHTML(
+                                    item
+                                )}
                             </li>
                         `;
                     }
@@ -1411,6 +1362,7 @@ function renderDataLimitations(
                 .join("")}
 
         </ul>
+
     `;
 }
 
@@ -1460,7 +1412,7 @@ function displayAnalysis(
 ) {
 
     console.log(
-        "Complete API response:",
+        "Darukaa analysis response:",
         data
     );
 
@@ -1569,11 +1521,9 @@ function displayAnalysis(
             );
 
 
-    // --------------------------------------------------------
-    // BUILD COMPLETE RESULTS HTML
-    // --------------------------------------------------------
-
     resultsContent.innerHTML = `
+
+        <!-- OVERALL ASSESSMENT -->
 
         <div class="analysis-block">
 
@@ -1593,6 +1543,8 @@ function displayAnalysis(
         </div>
 
 
+        <!-- ENVIRONMENTAL FINDINGS -->
+
         <div class="analysis-block">
 
             <h3>
@@ -1609,6 +1561,8 @@ function displayAnalysis(
 
         </div>
 
+
+        <!-- MULTI-METRIC INTERACTIONS -->
 
         <div class="analysis-block">
 
@@ -1627,6 +1581,8 @@ function displayAnalysis(
         </div>
 
 
+        <!-- RECOMMENDATIONS -->
+
         <div class="analysis-block">
 
             <h3>
@@ -1643,6 +1599,8 @@ function displayAnalysis(
 
         </div>
 
+
+        <!-- SCIENTIFIC EVIDENCE -->
 
         <div class="analysis-block">
 
@@ -1661,6 +1619,8 @@ function displayAnalysis(
         </div>
 
 
+        <!-- LOCATION -->
+
         <div class="analysis-block">
 
             <h3>
@@ -1673,6 +1633,8 @@ function displayAnalysis(
 
         </div>
 
+
+        <!-- LOCATION BIODIVERSITY -->
 
         <div class="analysis-block">
 
@@ -1687,6 +1649,8 @@ function displayAnalysis(
         </div>
 
 
+        <!-- DATA LIMITATIONS -->
+
         <div class="analysis-block">
 
             <h3>
@@ -1700,6 +1664,8 @@ function displayAnalysis(
         </div>
 
 
+        <!-- DATA QUALITY -->
+
         ${
             data.data_quality
                 ? `
@@ -1710,6 +1676,7 @@ function displayAnalysis(
                         </h3>
 
                         <p>
+
                             <strong>
                                 Data completeness:
                             </strong>
@@ -1721,15 +1688,17 @@ function displayAnalysis(
                                     0
                                 )
                             )}%
+
                         </p>
 
                         ${
                             Array.isArray(
                                 data.data_quality.warnings
                             ) &&
-                            data.data_quality.warnings.length
+                            data.data_quality.warnings.length > 0
                                 ? `
                                     <ul>
+
                                         ${data.data_quality.warnings
                                             .map(
                                                 warning => `
@@ -1741,6 +1710,7 @@ function displayAnalysis(
                                                 `
                                             )
                                             .join("")}
+
                                     </ul>
                                 `
                                 : ""
@@ -1753,10 +1723,6 @@ function displayAnalysis(
 
     `;
 
-
-    // --------------------------------------------------------
-    // SHOW RESULTS
-    // --------------------------------------------------------
 
     resultsSection.style.display =
         "block";
@@ -1795,20 +1761,8 @@ async function analyzeEnvironment() {
         );
 
 
-        showStatus(
-            "Analyzing environmental conditions...",
-            "info"
-        );
-
-
         const environment =
             buildEnvironment();
-
-
-        console.log(
-            "Environment sent to backend:",
-            environment
-        );
 
 
         const question =
@@ -1819,13 +1773,8 @@ async function analyzeEnvironment() {
 
 
         console.log(
-            "Sending /analyze request..."
-        );
-
-
-        showStatus(
-            "Running environmental reasoning, scientific RAG, biodiversity data and AI analysis...",
-            "info"
+            "Sending environment:",
+            environment
         );
 
 
@@ -1843,20 +1792,8 @@ async function analyzeEnvironment() {
             );
 
 
-        console.log(
-            "Received analysis:",
-            data
-        );
-
-
         displayAnalysis(
             data
-        );
-
-
-        showStatus(
-            "Biodiversity analysis completed successfully.",
-            "success"
         );
 
 
@@ -1865,13 +1802,6 @@ async function analyzeEnvironment() {
         console.error(
             "Biodiversity analysis error:",
             error
-        );
-
-
-        showStatus(
-            "Analysis failed: " +
-            error.message,
-            "error"
         );
 
 
@@ -1954,7 +1884,9 @@ function addChatMessage(
         </strong>
 
         <p>
-            ${escapeHTML(text)}
+            ${escapeHTML(
+                text
+            )}
         </p>
 
     `;
@@ -1989,11 +1921,6 @@ async function sendChatMessage() {
 
 
     if (!input) {
-
-        console.error(
-            "Question input not found."
-        );
-
         return;
     }
 
@@ -2003,10 +1930,6 @@ async function sendChatMessage() {
 
 
     if (!question) {
-
-        alert(
-            "Please enter a question."
-        );
 
         return;
     }
@@ -2020,19 +1943,14 @@ async function sendChatMessage() {
         );
 
 
-        input.value = "";
+        input.value =
+            "";
 
 
         setLoading(
             button,
             true,
             "Thinking..."
-        );
-
-
-        showStatus(
-            "Processing your question...",
-            "info"
         );
 
 
@@ -2073,15 +1991,8 @@ async function sendChatMessage() {
         );
 
 
-        // Update analysis results too.
         displayAnalysis(
             data
-        );
-
-
-        showStatus(
-            "Response generated successfully.",
-            "success"
         );
 
 
@@ -2099,10 +2010,9 @@ async function sendChatMessage() {
         );
 
 
-        showStatus(
-            "Chat failed: " +
-            error.message,
-            "error"
+        alert(
+            "Chat failed:\n\n" +
+            error.message
         );
 
 
@@ -2189,12 +2099,6 @@ function clearForm() {
         resultsSection.style.display =
             "none";
     }
-
-
-    showStatus(
-        "Form cleared.",
-        "info"
-    );
 }
 
 
@@ -2245,17 +2149,11 @@ function clearChat() {
         "darukaa_session_id",
         sessionId
     );
-
-
-    showStatus(
-        "Conversation cleared.",
-        "info"
-    );
 }
 
 
 // ============================================================
-// SUGGESTION BUTTONS
+// SUGGESTION BUTTON
 // ============================================================
 
 function useSuggestion(
@@ -2276,56 +2174,12 @@ function useSuggestion(
     input.value =
         text;
 
-
     input.focus();
 }
 
 
 // ============================================================
-// BACKEND HEALTH CHECK
-// ============================================================
-
-async function checkBackend() {
-
-    try {
-
-        const data =
-            await apiRequest(
-                "/health",
-                "GET"
-            );
-
-
-        console.log(
-            "Darukaa backend connected:",
-            data
-        );
-
-
-        showStatus(
-            "Backend connected.",
-            "success"
-        );
-
-
-    } catch (error) {
-
-        console.warn(
-            "Backend health check failed:",
-            error
-        );
-
-
-        showStatus(
-            "Backend connection unavailable.",
-            "error"
-        );
-    }
-}
-
-
-// ============================================================
-// EVENT LISTENERS
+// INITIALIZE
 // ============================================================
 
 document.addEventListener(
@@ -2333,25 +2187,7 @@ document.addEventListener(
     () => {
 
         console.log(
-            "================================="
-        );
-
-        console.log(
             "Darukaa.Earth frontend initialized."
-        );
-
-        console.log(
-            "API:",
-            API_BASE_URL
-        );
-
-        console.log(
-            "Session:",
-            sessionId
-        );
-
-        console.log(
-            "================================="
         );
 
 
@@ -2370,12 +2206,6 @@ document.addEventListener(
             analyzeButton.addEventListener(
                 "click",
                 analyzeEnvironment
-            );
-
-        } else {
-
-            console.error(
-                "Analyze button not found."
             );
         }
 
@@ -2400,7 +2230,7 @@ document.addEventListener(
 
 
         // ----------------------------------------------------
-        // CHAT ENTER KEY
+        // ENTER KEY FOR CHAT
         // ----------------------------------------------------
 
         const questionInput =
@@ -2430,7 +2260,7 @@ document.addEventListener(
 
 
         // ----------------------------------------------------
-        // CLEAR FORM
+        // CLEAR BUTTON
         // ----------------------------------------------------
 
         const clearButton =
@@ -2491,13 +2321,6 @@ document.addEventListener(
                 );
             }
         );
-
-
-        // ----------------------------------------------------
-        // BACKEND CHECK
-        // ----------------------------------------------------
-
-        checkBackend();
 
     }
 );
