@@ -1,8 +1,14 @@
 // ============================================================
-// DARUKAA.EARTH FRONTEND
+// DARUKAA.EARTH - BIODIVERSITY AI FRONTEND
 // ============================================================
 
-const API_URL = "http://127.0.0.1:8000";
+// Use the same Vercel deployment for the API.
+// This also works when running the frontend locally.
+const API_BASE_URL =
+    window.location.hostname === "localhost" ||
+    window.location.hostname === "127.0.0.1"
+        ? "http://127.0.0.1:8000"
+        : window.location.origin;
 
 
 // ============================================================
@@ -16,9 +22,7 @@ if (!sessionId) {
         "session_" +
         Date.now() +
         "_" +
-        Math.random()
-            .toString(36)
-            .substring(2, 9);
+        Math.random().toString(36).substring(2, 10);
 
     localStorage.setItem(
         "darukaa_session_id",
@@ -31,38 +35,37 @@ if (!sessionId) {
 // DOM HELPERS
 // ============================================================
 
-function getValue(id) {
-
-    const element = document.getElementById(id);
-
-    if (!element) {
-        return null;
-    }
-
-    const value = element.value.trim();
-
-    return value === "" ? null : value;
+function getElement(id) {
+    return document.getElementById(id);
 }
 
+function getValue(id) {
+    const element = getElement(id);
+
+    if (!element) {
+        return "";
+    }
+
+    return element.value.trim();
+}
 
 function getNumber(id) {
-
     const value = getValue(id);
 
-    if (value === null) {
+    if (value === "") {
         return null;
     }
 
     const number = Number(value);
 
-    return Number.isNaN(number)
-        ? null
-        : number;
+    return Number.isFinite(number)
+        ? number
+        : null;
 }
 
 
 // ============================================================
-// BUILD ENVIRONMENT JSON
+// BUILD ENVIRONMENT PROFILE
 // ============================================================
 
 function buildEnvironment() {
@@ -70,1110 +73,939 @@ function buildEnvironment() {
     return {
 
         soil: {
-
             ph: getNumber("ph"),
 
             organic_carbon_percent:
-                getNumber(
-                    "organic_carbon_percent"
-                ),
+                getNumber("organicCarbon"),
 
             moisture_percent:
-                getNumber(
-                    "moisture_percent"
-                )
+                getNumber("moisture")
         },
 
         climate: {
-
             rainfall_mm_year:
-                getNumber(
-                    "rainfall_mm_year"
-                ),
+                getNumber("rainfall"),
 
             temperature_celsius:
-                getNumber(
-                    "temperature_celsius"
-                )
+                getNumber("temperature")
         },
 
         land: {
-
             land_use:
-                getValue("land_use"),
+                getValue("landUse") || null,
 
             crop_type:
-                getValue("crop_type")
+                getValue("cropType") || null
         },
 
         biodiversity: {
-
             species_richness:
-                getValue(
-                    "species_richness"
-                ),
+                getValue("speciesRichness") || null,
 
             habitat_diversity:
-                getValue(
-                    "habitat_diversity"
-                )
+                getValue("habitatDiversity") || null
         },
 
         human_impact: {
-
             pollution_level:
-                getValue(
-                    "pollution_level"
-                ),
+                getValue("pollutionLevel") || null,
 
             deforestation_level:
-                getValue(
-                    "deforestation_level"
-                ),
+                getValue("deforestationLevel") || null,
 
             habitat_fragmentation:
-                getValue(
-                    "habitat_fragmentation"
-                )
+                getValue("habitatFragmentation") || null
         },
 
         location: {
-
-            region:
-                getValue("region"),
-
             latitude:
                 getNumber("latitude"),
 
             longitude:
-                getNumber("longitude")
+                getNumber("longitude"),
+
+            region:
+                getValue("region") || null
         }
     };
 }
 
 
 // ============================================================
-// DOM ELEMENTS
+// API REQUEST
 // ============================================================
 
-const chatMessages =
-    document.getElementById(
-        "chatMessages"
-    );
-
-const questionInput =
-    document.getElementById(
-        "question"
-    );
-
-const sendButton =
-    document.getElementById(
-        "sendButton"
-    );
-
-const analyzeButton =
-    document.getElementById(
-        "analyzeButton"
-    );
-
-const clearButton =
-    document.getElementById(
-        "clearButton"
-    );
-
-
-// ============================================================
-// ADD CHAT MESSAGE
-// ============================================================
-
-function addChatMessage(
-    message,
-    sender
+async function apiRequest(
+    endpoint,
+    options = {}
 ) {
 
-    if (!chatMessages) {
-        return;
-    }
+    const response = await fetch(
+        `${API_BASE_URL}${endpoint}`,
+        {
+            ...options,
 
-    const messageDiv =
-        document.createElement(
-            "div"
-        );
+            headers: {
+                "Content-Type": "application/json",
 
-    messageDiv.className =
-        `message ${sender}`;
-
-    messageDiv.innerHTML =
-        message;
-
-    chatMessages.appendChild(
-        messageDiv
+                ...(options.headers || {})
+            }
+        }
     );
 
-    chatMessages.scrollTop =
-        chatMessages.scrollHeight;
+
+    let data;
+
+    try {
+
+        data = await response.json();
+
+    } catch (error) {
+
+        throw new Error(
+            `Server returned HTTP ${response.status}`
+        );
+    }
+
+
+    if (!response.ok) {
+
+        const message =
+            data?.detail ||
+            data?.message ||
+            `Request failed with status ${response.status}`;
+
+        throw new Error(message);
+    }
+
+
+    return data;
 }
 
 
 // ============================================================
-// ESCAPE HTML
+// LOADING STATE
 // ============================================================
 
-function escapeHtml(value) {
+function setLoading(
+    button,
+    loading,
+    originalText
+) {
 
-    if (value === null ||
-        value === undefined) {
+    if (!button) {
+        return;
+    }
 
+    if (loading) {
+
+        button.disabled = true;
+
+        button.dataset.originalText =
+            originalText ||
+            button.textContent;
+
+        button.textContent =
+            "Analyzing...";
+
+    } else {
+
+        button.disabled = false;
+
+        button.textContent =
+            button.dataset.originalText ||
+            originalText ||
+            "Analyze";
+    }
+}
+
+
+// ============================================================
+// RESULT ELEMENT
+// ============================================================
+
+function getResultsContainer() {
+
+    return (
+        getElement("results") ||
+        getElement("resultContainer") ||
+        getElement("resultsContainer")
+    );
+}
+
+
+// ============================================================
+// SAFE TEXT
+// ============================================================
+
+function escapeHTML(value) {
+
+    if (value === null || value === undefined) {
         return "";
     }
 
     return String(value)
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
 }
 
 
 // ============================================================
-// SHOW LOADING
+// RENDER ANALYSIS
 // ============================================================
 
-function showLoading() {
+function renderAnalysis(data) {
 
-    addChatMessage(
-        `
-        <div class="loading">
-            Analyzing environmental data...
-        </div>
-        `,
-        "assistant"
-    );
-}
+    const container =
+        getResultsContainer();
 
-
-// ============================================================
-// FORMAT ASSESSMENT
-// ============================================================
-
-function formatAssessment(
-    response
-) {
-
-    if (!response) {
-        return "";
+    if (!container) {
+        console.warn(
+            "Results container not found."
+        );
+        return;
     }
 
-    const assessment =
-        response.assessment;
-
-    if (!assessment) {
-        return "";
-    }
-
-    return `
-        <div class="result-section">
-            <h3>🌿 Environmental Assessment</h3>
-            <p>
-                ${escapeHtml(assessment)}
-            </p>
-        </div>
-    `;
-}
-
-
-// ============================================================
-// FORMAT INTERACTIONS
-// ============================================================
-
-function formatInteractions(
-    response
-) {
-
-    const interactions =
-        response?.key_interactions;
-
-    if (!Array.isArray(interactions) ||
-        interactions.length === 0) {
-
-        return "";
-    }
-
-    let html = `
-        <div class="result-section">
-            <h3>🔗 Key Environmental Interactions</h3>
-    `;
-
-    interactions.forEach(
-        (item) => {
-
-            html += `
-                <div class="interaction-card">
-
-                    <strong>
-                        ${escapeHtml(
-                            item.interaction
-                        )}
-                    </strong>
-
-                    <p>
-                        ${escapeHtml(
-                            item.reasoning
-                        )}
-                    </p>
-
-                </div>
-            `;
-        }
-    );
-
-    html += `</div>`;
-
-    return html;
-}
-
-
-// ============================================================
-// FORMAT RECOMMENDATIONS
-// ============================================================
-
-function formatRecommendations(
-    response
-) {
-
-    const recommendations =
-        response?.recommendations;
-
-    if (!Array.isArray(recommendations) ||
-        recommendations.length === 0) {
-
-        return "";
-    }
-
-    let html = `
-        <div class="result-section">
-
-            <h3>
-                🌱 Recommended Actions
-            </h3>
-    `;
-
-    recommendations.forEach(
-        (item, index) => {
-
-            const metrics =
-                Array.isArray(
-                    item.impacted_metrics
-                )
-                    ? item.impacted_metrics
-                    : [];
-
-            html += `
-                <div class="recommendation-card">
-
-                    <h4>
-                        ${index + 1}.
-                        ${escapeHtml(
-                            item.action
-                        )}
-                    </h4>
-
-                    <p>
-                        <strong>
-                            Why it works:
-                        </strong>
-
-                        ${escapeHtml(
-                            item.why_it_works
-                        )}
-                    </p>
-
-                    <p>
-                        <strong>
-                            Impacted metrics:
-                        </strong>
-
-                        ${
-                            metrics.length > 0
-                                ? metrics
-                                    .map(
-                                        metric =>
-                                            `<span class="metric">
-                                                ${escapeHtml(metric)}
-                                             </span>`
-                                    )
-                                    .join(" ")
-                                : "Not specified"
-                        }
-                    </p>
-
-                    <p>
-                        <strong>
-                            Time horizon:
-                        </strong>
-
-                        ${escapeHtml(
-                            item.time_horizon
-                        )}
-                    </p>
-
-                    <p>
-                        <strong>
-                            Confidence:
-                        </strong>
-
-                        ${escapeHtml(
-                            item.confidence
-                        )}
-                    </p>
-
-                </div>
-            `;
-        }
-    );
-
-    html += `</div>`;
-
-    return html;
-}
-
-
-// ============================================================
-// FORMAT SCIENTIFIC EVIDENCE
-// ============================================================
-
-function formatScientificEvidence(
-    response
-) {
-
-    const evidence =
-        response?.scientific_evidence;
-
-    if (!Array.isArray(evidence) ||
-        evidence.length === 0) {
-
-        return "";
-    }
-
-    let html = `
-        <div class="result-section">
-
-            <h3>
-                📚 Scientific Evidence
-            </h3>
-    `;
-
-    evidence.forEach(
-        (item) => {
-
-            html += `
-                <div class="evidence-card">
-
-                    <strong>
-                        ${escapeHtml(
-                            item.source
-                        )}
-                    </strong>
-
-                    ${
-                        item.page
-                            ? `
-                                <span>
-                                    Page:
-                                    ${escapeHtml(
-                                        item.page
-                                    )}
-                                </span>
-                              `
-                            : ""
-                    }
-
-                    <p>
-                        ${escapeHtml(
-                            item.evidence
-                        )}
-                    </p>
-
-                </div>
-            `;
-        }
-    );
-
-    html += `</div>`;
-
-    return html;
-}
-
-
-// ============================================================
-// FORMAT GBIF DATA
-// ============================================================
-
-function formatGBIF(
-    gbif
-) {
-
-    if (!gbif) {
-        return "";
-    }
-
-    // --------------------------------------------------------
-    // GBIF unavailable
-    // --------------------------------------------------------
-
-    if (!gbif.available) {
-
-        return `
-            <div class="result-section gbif-section">
-
-                <h3>
-                    🗺️ Location Biodiversity
-                </h3>
-
-                <div class="gbif-unavailable">
-
-                    <p>
-                        Location-based biodiversity
-                        observations are currently unavailable.
-                    </p>
-
-                    ${
-                        gbif.error
-                            ? `
-                                <small>
-                                    ${escapeHtml(
-                                        gbif.error
-                                    )}
-                                </small>
-                              `
-                            : ""
-                    }
-
-                </div>
-
-            </div>
-        `;
-    }
-
-    // --------------------------------------------------------
-    // Available
-    // --------------------------------------------------------
-
-    const recordCount =
-        gbif.record_count ?? 0;
-
-    const returnedRecords =
-        gbif.returned_records ?? 0;
-
-    const observedTaxaCount =
-        gbif.observed_taxa_count ?? 0;
-
-    const taxa =
-        Array.isArray(
-            gbif.observed_taxa
-        )
-            ? gbif.observed_taxa
-            : [];
-
-    let taxaHTML = "";
-
-    if (taxa.length > 0) {
-
-        taxaHTML = `
-            <div class="taxa-list">
-
-                <strong>
-                    Observed scientific names
-                </strong>
-
-                <ul>
-
-                    ${
-                        taxa
-                            .slice(0, 20)
-                            .map(
-                                name =>
-                                    `<li>
-                                        ${escapeHtml(name)}
-                                     </li>`
-                            )
-                            .join("")
-                    }
-
-                </ul>
-
-            </div>
-        `;
-
-    } else {
-
-        taxaHTML = `
-            <p>
-                No scientific names were returned
-                in the retrieved records.
-            </p>
-        `;
-    }
-
-    return `
-        <div class="result-section gbif-section">
-
-            <h3>
-                🗺️ Location Biodiversity
-            </h3>
-
-            <div class="gbif-summary">
-
-                <div class="gbif-stat">
-
-                    <strong>
-                        ${escapeHtml(recordCount)}
-                    </strong>
-
-                    <span>
-                        GBIF records
-                    </span>
-
-                </div>
-
-
-                <div class="gbif-stat">
-
-                    <strong>
-                        ${escapeHtml(
-                            returnedRecords
-                        )}
-                    </strong>
-
-                    <span>
-                        Retrieved
-                    </span>
-
-                </div>
-
-
-                <div class="gbif-stat">
-
-                    <strong>
-                        ${escapeHtml(
-                            observedTaxaCount
-                        )}
-                    </strong>
-
-                    <span>
-                        Observed taxa
-                    </span>
-
-                </div>
-
-            </div>
-
-
-            ${
-                gbif.latitude !== undefined &&
-                gbif.longitude !== undefined
-                    ? `
-                        <p>
-
-                            <strong>
-                                Location:
-                            </strong>
-
-                            ${escapeHtml(
-                                gbif.latitude
-                            )},
-                            ${escapeHtml(
-                                gbif.longitude
-                            )}
-
-                            <br>
-
-                            <strong>
-                                Search radius:
-                            </strong>
-
-                            ${escapeHtml(
-                                gbif.radius_km
-                            )} km
-
-                        </p>
-                      `
-                    : ""
-            }
-
-
-            ${taxaHTML}
-
-
-            <div class="gbif-note">
-
-                <strong>
-                    Important:
-                </strong>
-
-                GBIF occurrence records represent
-                recorded observations available in GBIF.
-                They are not a complete measure of true
-                ecological species richness.
-
-            </div>
-
-        </div>
-    `;
-}
-
-
-// ============================================================
-// FORMAT DATA LIMITATIONS
-// ============================================================
-
-function formatLimitations(
-    response
-) {
-
-    const limitations =
-        response?.data_limitations;
-
-    if (!Array.isArray(limitations) ||
-        limitations.length === 0) {
-
-        return "";
-    }
-
-    let html = `
-        <div class="result-section">
-
-            <h3>
-                ⚠️ Data Limitations
-            </h3>
-
-            <ul class="limitations">
-    `;
-
-    limitations.forEach(
-        limitation => {
-
-            html += `
-                <li>
-                    ${escapeHtml(
-                        limitation
-                    )}
-                </li>
-            `;
-        }
-    );
-
-    html += `
-            </ul>
-        </div>
-    `;
-
-    return html;
-}
-
-
-// ============================================================
-// DISPLAY COMPLETE RESPONSE
-// ============================================================
-
-function displayResponse(
-    data
-) {
 
     const response =
-        data?.response || {};
+        data.response || {};
+
+    const analysis =
+        data.analysis || {};
+
+    const findings =
+        analysis.findings || [];
+
+    const interactions =
+        response.key_interactions ||
+        analysis.interactions ||
+        [];
+
+    const recommendations =
+        response.recommendations ||
+        [];
+
+    const evidence =
+        response.scientific_evidence ||
+        data.scientific_evidence ||
+        [];
+
+    const limitations =
+        response.data_limitations ||
+        [];
+
+    const gbif =
+        data.location_biodiversity ||
+        null;
+
 
     let html = "";
 
-    html += formatAssessment(
-        response
-    );
 
-    html += formatInteractions(
-        response
-    );
+    // ========================================================
+    // ASSESSMENT
+    // ========================================================
 
-    html += formatRecommendations(
-        response
-    );
+    html += `
+        <section class="result-card assessment-card">
 
-    html += formatScientificEvidence(
-        response
-    );
+            <h2>Environmental Assessment</h2>
 
-    // GBIF DATA
-    html += formatGBIF(
-        data?.location_biodiversity
-    );
+            <p>
+                ${escapeHTML(
+                    response.assessment ||
+                    analysis.overall_assessment ||
+                    "No assessment available."
+                )}
+            </p>
 
-    html += formatLimitations(
-        response
-    );
+        </section>
+    `;
 
-    if (!html) {
 
-        html = `
-            <div class="result-section">
+    // ========================================================
+    // FINDINGS
+    // ========================================================
 
-                <p>
-                    No structured response was returned.
-                </p>
+    if (findings.length > 0) {
 
-            </div>
+        html += `
+            <section class="result-card">
+
+                <h2>Environmental Findings</h2>
+
+                <div class="finding-list">
+        `;
+
+        findings.forEach(
+            (finding) => {
+
+                html += `
+                    <div class="finding-item">
+
+                        <h3>
+                            ${escapeHTML(
+                                finding.factor
+                            )}
+                        </h3>
+
+                        <span class="severity">
+                            ${escapeHTML(
+                                finding.severity
+                            )}
+                        </span>
+
+                        <p>
+                            ${escapeHTML(
+                                finding.explanation
+                            )}
+                        </p>
+
+                    </div>
+                `;
+            }
+        );
+
+        html += `
+                </div>
+            </section>
         `;
     }
 
-    addChatMessage(
-        html,
-        "assistant"
-    );
-}
 
+    // ========================================================
+    // KEY INTERACTIONS
+    // ========================================================
 
-// ============================================================
-// SEND CHAT MESSAGE
-// ============================================================
+    if (interactions.length > 0) {
 
-async function sendMessage() {
+        html += `
+            <section class="result-card">
 
-    const question =
-        questionInput?.value.trim();
+                <h2>Multi-Metric Interactions</h2>
 
-    if (!question) {
+                <div class="interaction-list">
+        `;
 
-        return;
+        interactions.forEach(
+            (item) => {
+
+                const title =
+                    item.interaction ||
+                    (
+                        Array.isArray(item.variables)
+                            ? item.variables.join(" + ")
+                            : "Environmental interaction"
+                    );
+
+                html += `
+                    <div class="interaction-item">
+
+                        <h3>
+                            ${escapeHTML(title)}
+                        </h3>
+
+                        <p>
+                            ${escapeHTML(
+                                item.reasoning ||
+                                "No reasoning provided."
+                            )}
+                        </p>
+
+                    </div>
+                `;
+            }
+        );
+
+        html += `
+                </div>
+            </section>
+        `;
     }
 
-    // --------------------------------------------------------
-    // Display user message
-    // --------------------------------------------------------
 
-    addChatMessage(
-        escapeHtml(question),
-        "user"
-    );
+    // ========================================================
+    // RECOMMENDATIONS
+    // ========================================================
 
-    // --------------------------------------------------------
-    // Clear input
-    // --------------------------------------------------------
+    if (recommendations.length > 0) {
 
-    questionInput.value = "";
+        html += `
+            <section class="result-card">
 
-    // --------------------------------------------------------
-    // Loading
-    // --------------------------------------------------------
+                <h2>Biodiversity Recommendations</h2>
 
-    showLoading();
+                <div class="recommendation-list">
+        `;
 
-    // --------------------------------------------------------
-    // Environment
-    // --------------------------------------------------------
+        recommendations.forEach(
+            (recommendation, index) => {
 
-    const environment =
-        buildEnvironment();
+                const metrics =
+                    recommendation.impacted_metrics ||
+                    [];
 
-    // --------------------------------------------------------
-    // Request body
-    // --------------------------------------------------------
+                html += `
+                    <article class="recommendation-card">
 
-    const requestBody = {
+                        <div class="recommendation-number">
+                            ${index + 1}
+                        </div>
 
-        session_id:
-            sessionId,
+                        <div class="recommendation-content">
 
-        question:
-            question,
+                            <h3>
+                                ${escapeHTML(
+                                    recommendation.action ||
+                                    "Recommended action"
+                                )}
+                            </h3>
 
-        environment:
-            environment
-    };
+                            <p>
+                                <strong>Why it works:</strong>
+                                ${escapeHTML(
+                                    recommendation.why_it_works ||
+                                    ""
+                                )}
+                            </p>
 
-    try {
+                            ${
+                                metrics.length > 0
+                                    ? `
+                                    <p>
+                                        <strong>Impacted metrics:</strong>
+                                        ${metrics
+                                            .map(
+                                                metric =>
+                                                    `<span class="metric-tag">
+                                                        ${escapeHTML(metric)}
+                                                    </span>`
+                                            )
+                                            .join(" ")}
+                                    </p>
+                                    `
+                                    : ""
+                            }
 
-        const response =
-            await fetch(
-                `${API_URL}/chat`,
-                {
-                    method: "POST",
+                            <p>
+                                <strong>Time horizon:</strong>
+                                ${escapeHTML(
+                                    recommendation.time_horizon ||
+                                    "Not specified"
+                                )}
+                            </p>
 
-                    headers: {
-                        "Content-Type":
-                            "application/json"
-                    },
+                            <p>
+                                <strong>Confidence:</strong>
+                                ${escapeHTML(
+                                    recommendation.confidence ||
+                                    "Not specified"
+                                )}
+                            </p>
 
-                    body: JSON.stringify(
-                        requestBody
-                    )
+                        </div>
+
+                    </article>
+                `;
+            }
+        );
+
+        html += `
+                </div>
+            </section>
+        `;
+    }
+
+
+    // ========================================================
+    // SCIENTIFIC EVIDENCE
+    // ========================================================
+
+    if (evidence.length > 0) {
+
+        html += `
+            <section class="result-card">
+
+                <h2>Scientific Evidence</h2>
+
+                <div class="evidence-list">
+        `;
+
+        evidence.forEach(
+            (item) => {
+
+                html += `
+                    <article class="evidence-card">
+
+                        <h3>
+                            ${escapeHTML(
+                                item.source ||
+                                "Scientific source"
+                            )}
+                        </h3>
+
+                        <p>
+                            <strong>Page:</strong>
+                            ${escapeHTML(
+                                item.page ||
+                                "Not specified"
+                            )}
+                        </p>
+
+                        <p>
+                            ${escapeHTML(
+                                item.evidence ||
+                                item.text ||
+                                ""
+                            )}
+                        </p>
+
+                    </article>
+                `;
+            }
+        );
+
+        html += `
+                </div>
+            </section>
+        `;
+    }
+
+
+    // ========================================================
+    // GBIF
+    // ========================================================
+
+    if (
+        gbif &&
+        gbif.available
+    ) {
+
+        const taxa =
+            gbif.observed_taxa || [];
+
+        html += `
+            <section class="result-card gbif-card">
+
+                <h2>Location Biodiversity — GBIF</h2>
+
+                <div class="gbif-summary">
+
+                    <div>
+                        <strong>
+                            ${escapeHTML(
+                                gbif.record_count || 0
+                            )}
+                        </strong>
+
+                        <span>
+                            occurrence records
+                        </span>
+                    </div>
+
+                    <div>
+                        <strong>
+                            ${escapeHTML(
+                                gbif.observed_taxa_count || 0
+                            )}
+                        </strong>
+
+                        <span>
+                            observed taxa
+                        </span>
+                    </div>
+
+                    <div>
+                        <strong>
+                            ${escapeHTML(
+                                gbif.radius_km || 0
+                            )} km
+                        </strong>
+
+                        <span>
+                            search radius
+                        </span>
+                    </div>
+
+                </div>
+        `;
+
+
+        if (taxa.length > 0) {
+
+            html += `
+                <h3>Observed Taxa</h3>
+
+                <ul class="taxa-list">
+            `;
+
+            taxa.slice(0, 20).forEach(
+                (taxon) => {
+
+                    html += `
+                        <li>
+                            ${escapeHTML(taxon)}
+                        </li>
+                    `;
                 }
             );
 
-        // ----------------------------------------------------
-        // Remove loading message
-        // ----------------------------------------------------
-
-        removeLastLoadingMessage();
-
-        // ----------------------------------------------------
-        // HTTP error
-        // ----------------------------------------------------
-
-        if (!response.ok) {
-
-            const errorText =
-                await response.text();
-
-            throw new Error(
-                `Server error ${response.status}: ${errorText}`
-            );
+            html += `
+                </ul>
+            `;
         }
 
-        // ----------------------------------------------------
-        // Parse JSON
-        // ----------------------------------------------------
 
-        const data =
-            await response.json();
+        html += `
+                <p class="data-note">
 
-        // ----------------------------------------------------
-        // Display
-        // ----------------------------------------------------
+                    GBIF occurrence records represent
+                    recorded observations and should not
+                    be interpreted as a complete measure
+                    of true species richness or species absence.
 
-        displayResponse(
-            data
-        );
-
-    } catch (error) {
-
-        removeLastLoadingMessage();
-
-        console.error(
-            "Chat error:",
-            error
-        );
-
-        addChatMessage(
-            `
-            <div class="error-message">
-
-                <strong>
-                    Could not connect to backend.
-                </strong>
-
-                <p>
-                    ${escapeHtml(
-                        error.message
-                    )}
                 </p>
 
-                <small>
-                    Make sure FastAPI is running on
-                    http://127.0.0.1:8000
-                </small>
-
-            </div>
-            `,
-            "assistant"
-        );
+            </section>
+        `;
     }
+
+
+    // ========================================================
+    // DATA LIMITATIONS
+    // ========================================================
+
+    if (limitations.length > 0) {
+
+        html += `
+            <section class="result-card limitation-card">
+
+                <h2>Data Limitations</h2>
+
+                <ul>
+        `;
+
+        limitations.forEach(
+            (limitation) => {
+
+                html += `
+                    <li>
+                        ${escapeHTML(
+                            limitation
+                        )}
+                    </li>
+                `;
+            }
+        );
+
+        html += `
+                </ul>
+
+            </section>
+        `;
+    }
+
+
+    container.innerHTML = html;
+
+
+    // Scroll to results
+
+    container.scrollIntoView({
+        behavior: "smooth",
+        block: "start"
+    });
 }
 
 
 // ============================================================
-// REMOVE LAST LOADING MESSAGE
-// ============================================================
-
-function removeLastLoadingMessage() {
-
-    if (!chatMessages) {
-        return;
-    }
-
-    const messages =
-        chatMessages.querySelectorAll(
-            ".message.assistant"
-        );
-
-    if (messages.length === 0) {
-        return;
-    }
-
-    const last =
-        messages[messages.length - 1];
-
-    if (
-        last.querySelector(
-            ".loading"
-        )
-    ) {
-
-        last.remove();
-    }
-}
-
-
-// ============================================================
-// ANALYZE BUTTON
+// ANALYZE
 // ============================================================
 
 async function analyzeEnvironment() {
 
+    const button =
+        getElement("analyzeBtn") ||
+        getElement("analyzeButton");
+
+    const question =
+        getValue("question") ||
+        getValue("userQuestion");
+
+
+    if (!question) {
+
+        alert(
+            "Please enter a biodiversity question."
+        );
+
+        return;
+    }
+
+
     const environment =
         buildEnvironment();
 
-    const question =
-        questionInput?.value.trim() ||
-        "Analyze this environment and recommend ways to improve biodiversity.";
 
-    addChatMessage(
-        `
-            Analyzing the environmental profile...
-        `,
-        "user"
+    setLoading(
+        button,
+        true
     );
 
-    showLoading();
 
     try {
 
-        const response =
-            await fetch(
-                `${API_URL}/analyze`,
+        const data =
+            await apiRequest(
+                "/analyze",
                 {
                     method: "POST",
 
-                    headers: {
-                        "Content-Type":
-                            "application/json"
-                    },
-
                     body: JSON.stringify({
-
-                        question:
-                            question,
-
-                        environment:
-                            environment
+                        question,
+                        environment
                     })
                 }
             );
 
-        removeLastLoadingMessage();
 
-        if (!response.ok) {
+        renderAnalysis(data);
 
-            const errorText =
-                await response.text();
-
-            throw new Error(
-                `Server error ${response.status}: ${errorText}`
-            );
-        }
-
-        const data =
-            await response.json();
-
-        displayResponse(
-            data
-        );
 
     } catch (error) {
-
-        removeLastLoadingMessage();
 
         console.error(
             "Analyze error:",
             error
         );
 
-        addChatMessage(
-            `
-                <div class="error-message">
 
-                    <strong>
-                        Analysis failed.
-                    </strong>
+        alert(
+            "Analysis failed:\n\n" +
+            error.message
+        );
 
-                    <p>
-                        ${escapeHtml(
-                            error.message
-                        )}
-                    </p>
 
-                </div>
-            `,
-            "assistant"
+    } finally {
+
+        setLoading(
+            button,
+            false
         );
     }
 }
 
 
 // ============================================================
-// CLEAR FORM
+// CHAT
 // ============================================================
 
-function clearEnvironment() {
+async function sendChatMessage() {
 
-    const fields = [
+    const input =
+        getElement("chatInput") ||
+        getElement("chatMessage") ||
+        getElement("message");
 
-        "ph",
+    const chatContainer =
+        getElement("chatMessages") ||
+        getElement("chatHistory");
 
-        "organic_carbon_percent",
 
-        "moisture_percent",
+    if (!input) {
 
-        "rainfall_mm_year",
+        console.error(
+            "Chat input not found."
+        );
 
-        "temperature_celsius",
-
-        "land_use",
-
-        "crop_type",
-
-        "species_richness",
-
-        "habitat_diversity",
-
-        "pollution_level",
-
-        "deforestation_level",
-
-        "habitat_fragmentation",
-
-        "region",
-
-        "latitude",
-
-        "longitude"
-    ];
-
-    fields.forEach(
-        id => {
-
-            const element =
-                document.getElementById(
-                    id
-                );
-
-            if (element) {
-
-                element.value = "";
-            }
-        }
-    );
-
-    if (chatMessages) {
-
-        chatMessages.innerHTML = "";
+        return;
     }
 
-    addChatMessage(
-        `
-            Hello! Enter your environmental
-            information and ask me a biodiversity
-            question.
-        `,
-        "assistant"
+
+    const question =
+        input.value.trim();
+
+
+    if (!question) {
+        return;
+    }
+
+
+    // --------------------------------------------------------
+    // Add user message
+    // --------------------------------------------------------
+
+    if (chatContainer) {
+
+        const userMessage =
+            document.createElement("div");
+
+        userMessage.className =
+            "chat-message user-message";
+
+        userMessage.textContent =
+            question;
+
+        chatContainer.appendChild(
+            userMessage
+        );
+
+        chatContainer.scrollTop =
+            chatContainer.scrollHeight;
+    }
+
+
+    input.value = "";
+
+
+    // --------------------------------------------------------
+    // Build environment
+    // --------------------------------------------------------
+
+    const environment =
+        buildEnvironment();
+
+
+    try {
+
+        const data =
+            await apiRequest(
+                "/chat",
+                {
+                    method: "POST",
+
+                    body: JSON.stringify({
+
+                        session_id:
+                            sessionId,
+
+                        question,
+
+                        environment
+                    })
+                }
+            );
+
+
+        // ----------------------------------------------------
+        // Add assistant message
+        // ----------------------------------------------------
+
+        if (chatContainer) {
+
+            const assistantMessage =
+                document.createElement("div");
+
+            assistantMessage.className =
+                "chat-message assistant-message";
+
+
+            const response =
+                data.response || {};
+
+
+            assistantMessage.innerHTML = `
+
+                <strong>
+                    Darukaa AI
+                </strong>
+
+                <p>
+                    ${escapeHTML(
+                        response.assessment ||
+                        "Analysis completed."
+                    )}
+                </p>
+
+            `;
+
+
+            chatContainer.appendChild(
+                assistantMessage
+            );
+
+
+            chatContainer.scrollTop =
+                chatContainer.scrollHeight;
+        }
+
+
+        // Also update detailed results
+
+        renderAnalysis(data);
+
+
+    } catch (error) {
+
+        console.error(
+            "Chat error:",
+            error
+        );
+
+
+        if (chatContainer) {
+
+            const errorMessage =
+                document.createElement("div");
+
+            errorMessage.className =
+                "chat-message error-message";
+
+            errorMessage.textContent =
+                "Error: " +
+                error.message;
+
+            chatContainer.appendChild(
+                errorMessage
+            );
+        }
+    }
+}
+
+
+// ============================================================
+// CLEAR
+// ============================================================
+
+function clearConversation() {
+
+    const chatContainer =
+        getElement("chatMessages") ||
+        getElement("chatHistory");
+
+    const results =
+        getResultsContainer();
+
+
+    if (chatContainer) {
+
+        chatContainer.innerHTML = "";
+    }
+
+
+    if (results) {
+
+        results.innerHTML = "";
+    }
+
+
+    // New session
+
+    sessionId =
+        "session_" +
+        Date.now() +
+        "_" +
+        Math.random()
+            .toString(36)
+            .substring(2, 10);
+
+
+    localStorage.setItem(
+        "darukaa_session_id",
+        sessionId
     );
 }
 
@@ -1182,74 +1014,77 @@ function clearEnvironment() {
 // EVENT LISTENERS
 // ============================================================
 
-if (sendButton) {
+document.addEventListener(
+    "DOMContentLoaded",
+    () => {
 
-    sendButton.addEventListener(
-        "click",
-        sendMessage
-    );
-}
-
-
-if (analyzeButton) {
-
-    analyzeButton.addEventListener(
-        "click",
-        analyzeEnvironment
-    );
-}
+        const analyzeButton =
+            getElement("analyzeBtn") ||
+            getElement("analyzeButton");
 
 
-if (clearButton) {
+        if (analyzeButton) {
 
-    clearButton.addEventListener(
-        "click",
-        clearEnvironment
-    );
-}
-
-
-// ============================================================
-// ENTER KEY
-// ============================================================
-
-if (questionInput) {
-
-    questionInput.addEventListener(
-        "keydown",
-        function (event) {
-
-            if (
-                event.key === "Enter" &&
-                !event.shiftKey
-            ) {
-
-                event.preventDefault();
-
-                sendMessage();
-            }
+            analyzeButton.addEventListener(
+                "click",
+                analyzeEnvironment
+            );
         }
-    );
-}
 
 
-// ============================================================
-// INITIAL MESSAGE
-// ============================================================
+        const chatButton =
+            getElement("chatBtn") ||
+            getElement("sendChatBtn") ||
+            getElement("sendButton");
 
-if (chatMessages &&
-    chatMessages.children.length === 0) {
 
-    addChatMessage(
-        `
-            Hello! 👋
+        if (chatButton) {
 
-            I am the Darukaa.Earth Biodiversity
-            Intelligence Assistant.
+            chatButton.addEventListener(
+                "click",
+                sendChatMessage
+            );
+        }
 
-            Enter your environmental data and ask
-            a question about biodiversity.
-        `,
-        "assistant"
-    );
-}
+
+        const clearButton =
+            getElement("clearBtn") ||
+            getElement("clearButton");
+
+
+        if (clearButton) {
+
+            clearButton.addEventListener(
+                "click",
+                clearConversation
+            );
+        }
+
+
+        const chatInput =
+            getElement("chatInput") ||
+            getElement("chatMessage") ||
+            getElement("message");
+
+
+        if (chatInput) {
+
+            chatInput.addEventListener(
+                "keydown",
+                (event) => {
+
+                    if (
+                        event.key === "Enter" &&
+                        !event.shiftKey
+                    ) {
+
+                        event.preventDefault();
+
+                        sendChatMessage();
+                    }
+                }
+            );
+        }
+
+    }
+);
