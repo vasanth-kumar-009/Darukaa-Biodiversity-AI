@@ -4,15 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <title>Darukaa.Earth - Biodiversity Intelligence</title>
+    <title>Darukaa.Earth</title>
 
     <link rel="stylesheet" href="/static/style.css">
 </head>
 
 <body>
 
-    <!-- ================= HEADER ================= -->
-    <header class="header">
+    <!-- Header -->
+    <header>
         <div class="container">
             <h1>🌿 Darukaa.Earth</h1>
             <p>AI-Powered Biodiversity Intelligence</p>
@@ -20,50 +20,45 @@
     </header>
 
 
-    <!-- ================= MAIN CONTAINER ================= -->
     <main class="container">
 
-        <!-- ================= INTRODUCTION ================= -->
-        <section class="intro-section">
+        <!-- Introduction -->
+        <section class="intro">
             <h2>Biodiversity Intelligence System</h2>
 
             <p>
-                Analyze environmental conditions using soil, climate, land-use,
-                biodiversity, human-impact and geographic information.
-                Darukaa.Earth combines scientific knowledge, environmental
-                reasoning, biodiversity observations and AI-generated
-                recommendations.
+                Analyze environmental conditions using soil, climate,
+                land use, biodiversity, human impact and location data.
+                Get evidence-backed biodiversity recommendations
+                using AI and scientific knowledge.
             </p>
         </section>
 
 
-        <!-- ================= ENVIRONMENT FORM ================= -->
+        <!-- Environmental Input -->
         <section class="card">
 
             <h2>🌍 Environmental Information</h2>
 
-            <p class="section-description">
-                Enter the available environmental information. You can leave
-                unknown values empty.
+            <p class="subtitle">
+                Enter the available environmental information.
+                Leave unknown values empty.
             </p>
 
 
-            <!-- ================= SOIL ================= -->
-            <div class="form-section">
+            <!-- Soil -->
+            <div class="section">
 
                 <h3>🌱 Soil</h3>
 
-                <div class="form-grid">
+                <div class="grid">
 
                     <div class="form-group">
-                        <label for="ph">
-                            Soil pH
-                        </label>
+                        <label for="ph">Soil pH</label>
 
                         <input
                             type="number"
                             id="ph"
-                            name="ph"
                             min="0"
                             max="14"
                             step="0.1"
@@ -80,7 +75,6 @@
                         <input
                             type="number"
                             id="organicCarbon"
-                            name="organicCarbon"
                             min="0"
                             max="100"
                             step="0.01"
@@ -97,7 +91,6 @@
                         <input
                             type="number"
                             id="moisture"
-                            name="moisture"
                             min="0"
                             max="100"
                             step="0.1"
@@ -106,15 +99,16 @@
                     </div>
 
                 </div>
+
             </div>
 
 
-            <!-- ================= CLIMATE ================= -->
-            <div class="form-section">
+            <!-- Climate -->
+            <div class="section">
 
                 <h3>🌦️ Climate</h3>
 
-                <div class="form-grid">
+                <div class="grid">
 
                     <div class="form-group">
                         <label for="rainfall">
@@ -124,7 +118,6 @@
                         <input
                             type="number"
                             id="rainfall"
-                            name="rainfall"
                             min="0"
                             step="1"
                             placeholder="e.g. 600"
@@ -140,22 +133,22 @@
                         <input
                             type="number"
                             id="temperature"
-                            name="temperature"
                             step="0.1"
                             placeholder="e.g. 30"
                         >
                     </div>
 
                 </div>
+
             </div>
 
 
-            <!-- ================= LAND ================= -->
-            <div class="form-section">
+            <!-- Land -->
+            <div class="section">
 
                 <h3>🌾 Land Use</h3>
 
-                <div class="form-grid">
+                <div class="grid">
 
                     <div class="form-group">
                         <label for="landUse">
@@ -165,7 +158,6 @@
                         <input
                             type="text"
                             id="landUse"
-                            name="landUse"
                             placeholder="e.g. cropland"
                         >
                     </div>
@@ -179,139 +171,216 @@
                         <input
                             type="text"
                             id="cropType"
-                            name="cropType"
                             placeholder="e.g. wheat_monoculture"
                         >
                     </div>
 
                 </div>
+
             </div>
 
 
-            <!-- ================= BIODIVERSITY ================= -->
-            <div class="form-section">
+            <!-- Biodiversity -->
+            <div class="section">
 
                 <h3>🦋 Biodiversity</h3>
 
-                <div class="form-grid">
+                <div class="grid">
 
                     <div class="form-group">
+
                         <label for="speciesRichness">
                             Species Richness
                         </label>
 
-                        <select
-                            id="speciesRichness"
-                            name="speciesRichness"
-                        >
-                            <option value="">Select</option>
-                            <option value="low">Low</option>
-                            <option value="moderate">Moderate</option>
-                            <option value="medium">Medium</option>
-                            <option value="high">High</option>
+                        <select id="speciesRichness">
+
+                            <option value="">
+                                Select
+                            </option>
+
+                            <option value="low">
+                                Low
+                            </option>
+
+                            <option value="moderate">
+                                Moderate
+                            </option>
+
+                            <option value="medium">
+                                Medium
+                            </option>
+
+                            <option value="high">
+                                High
+                            </option>
+
                         </select>
+
                     </div>
 
 
                     <div class="form-group">
+
                         <label for="habitatDiversity">
                             Habitat Diversity
                         </label>
 
-                        <select
-                            id="habitatDiversity"
-                            name="habitatDiversity"
-                        >
-                            <option value="">Select</option>
-                            <option value="low">Low</option>
-                            <option value="moderate">Moderate</option>
-                            <option value="medium">Medium</option>
-                            <option value="high">High</option>
+                        <select id="habitatDiversity">
+
+                            <option value="">
+                                Select
+                            </option>
+
+                            <option value="low">
+                                Low
+                            </option>
+
+                            <option value="moderate">
+                                Moderate
+                            </option>
+
+                            <option value="medium">
+                                Medium
+                            </option>
+
+                            <option value="high">
+                                High
+                            </option>
+
                         </select>
+
                     </div>
 
                 </div>
+
             </div>
 
 
-            <!-- ================= HUMAN IMPACT ================= -->
-            <div class="form-section">
+            <!-- Human Impact -->
+            <div class="section">
 
                 <h3>🏭 Human Impact</h3>
 
-                <div class="form-grid">
+                <div class="grid">
 
                     <div class="form-group">
+
                         <label for="pollutionLevel">
                             Pollution Level
                         </label>
 
-                        <select
-                            id="pollutionLevel"
-                            name="pollutionLevel"
-                        >
-                            <option value="">Select</option>
-                            <option value="low">Low</option>
-                            <option value="moderate">Moderate</option>
-                            <option value="medium">Medium</option>
-                            <option value="high">High</option>
+                        <select id="pollutionLevel">
+
+                            <option value="">
+                                Select
+                            </option>
+
+                            <option value="low">
+                                Low
+                            </option>
+
+                            <option value="moderate">
+                                Moderate
+                            </option>
+
+                            <option value="medium">
+                                Medium
+                            </option>
+
+                            <option value="high">
+                                High
+                            </option>
+
                         </select>
+
                     </div>
 
 
                     <div class="form-group">
+
                         <label for="deforestationLevel">
                             Deforestation Level
                         </label>
 
-                        <select
-                            id="deforestationLevel"
-                            name="deforestationLevel"
-                        >
-                            <option value="">Select</option>
-                            <option value="low">Low</option>
-                            <option value="moderate">Moderate</option>
-                            <option value="medium">Medium</option>
-                            <option value="high">High</option>
+                        <select id="deforestationLevel">
+
+                            <option value="">
+                                Select
+                            </option>
+
+                            <option value="low">
+                                Low
+                            </option>
+
+                            <option value="moderate">
+                                Moderate
+                            </option>
+
+                            <option value="medium">
+                                Medium
+                            </option>
+
+                            <option value="high">
+                                High
+                            </option>
+
                         </select>
+
                     </div>
 
 
                     <div class="form-group">
+
                         <label for="habitatFragmentation">
                             Habitat Fragmentation
                         </label>
 
-                        <select
-                            id="habitatFragmentation"
-                            name="habitatFragmentation"
-                        >
-                            <option value="">Select</option>
-                            <option value="low">Low</option>
-                            <option value="moderate">Moderate</option>
-                            <option value="medium">Medium</option>
-                            <option value="high">High</option>
+                        <select id="habitatFragmentation">
+
+                            <option value="">
+                                Select
+                            </option>
+
+                            <option value="low">
+                                Low
+                            </option>
+
+                            <option value="moderate">
+                                Moderate
+                            </option>
+
+                            <option value="medium">
+                                Medium
+                            </option>
+
+                            <option value="high">
+                                High
+                            </option>
+
                         </select>
+
                     </div>
 
                 </div>
+
             </div>
 
 
-            <!-- ================= LOCATION ================= -->
-            <div class="form-section">
+            <!-- Location -->
+            <div class="section">
 
                 <h3>📍 Location</h3>
 
-                <p class="section-description">
-                    Geographic information helps connect the environmental
-                    profile with nearby biodiversity observations.
+                <p class="subtitle">
+                    Location coordinates allow the system to retrieve
+                    nearby biodiversity observations.
                 </p>
 
-                <div class="form-grid">
+                <div class="grid">
 
-                    <!-- REGION -->
                     <div class="form-group">
+
                         <label for="region">
                             Region
                         </label>
@@ -319,14 +388,14 @@
                         <input
                             type="text"
                             id="region"
-                            name="region"
                             placeholder="e.g. Punjab"
                         >
+
                     </div>
 
 
-                    <!-- LATITUDE -->
                     <div class="form-group">
+
                         <label for="latitude">
                             Latitude
                         </label>
@@ -334,17 +403,17 @@
                         <input
                             type="number"
                             id="latitude"
-                            name="latitude"
                             min="-90"
                             max="90"
                             step="any"
                             placeholder="e.g. 30.9010"
                         >
+
                     </div>
 
 
-                    <!-- LONGITUDE -->
                     <div class="form-group">
+
                         <label for="longitude">
                             Longitude
                         </label>
@@ -352,20 +421,21 @@
                         <input
                             type="number"
                             id="longitude"
-                            name="longitude"
                             min="-180"
                             max="180"
                             step="any"
                             placeholder="e.g. 75.8573"
                         >
+
                     </div>
 
                 </div>
+
             </div>
 
 
-            <!-- ================= BUTTONS ================= -->
-            <div class="button-container">
+            <!-- Buttons -->
+            <div class="buttons">
 
                 <button
                     type="button"
@@ -381,7 +451,7 @@
                     id="clearBtn"
                     class="secondary-btn"
                 >
-                    🗑️ Clear
+                    Clear
                 </button>
 
             </div>
@@ -389,10 +459,10 @@
         </section>
 
 
-        <!-- ================= ANALYSIS RESULTS ================= -->
+        <!-- Results -->
         <section
             id="analysisResults"
-            class="card results-section"
+            class="card results"
             style="display: none;"
         >
 
@@ -403,39 +473,42 @@
         </section>
 
 
-        <!-- ================= CHATBOT ================= -->
+        <!-- Chatbot -->
         <section class="card chat-section">
 
             <h2>💬 Ask Darukaa.Earth</h2>
 
-            <p class="section-description">
-                Ask questions about biodiversity, soil, climate, land use,
-                environmental risks or possible interventions.
+            <p class="subtitle">
+                Ask questions about biodiversity, environmental risks,
+                soil, climate, land use or recommendations.
             </p>
 
 
-            <!-- CHAT MESSAGES -->
+            <!-- Messages -->
             <div
                 id="chatMessages"
                 class="chat-messages"
             >
-                <div class="chat-message assistant-message">
-                    <strong>Darukaa.Earth:</strong>
+
+                <div class="message assistant">
+
+                    <strong>Darukaa.Earth</strong>
 
                     <p>
-                        Hello! Enter your environmental information above and
-                        ask me a question about the ecosystem.
+                        Hello! Enter your environmental information above
+                        and ask me a question about your ecosystem.
                     </p>
+
                 </div>
+
             </div>
 
 
-            <!-- CHAT INPUT -->
-            <div class="chat-input-container">
+            <!-- Chat Input -->
+            <div class="chat-input">
 
                 <textarea
                     id="question"
-                    name="question"
                     rows="3"
                     placeholder="e.g. How can biodiversity be improved in this environment?"
                 ></textarea>
@@ -454,25 +527,23 @@
         </section>
 
 
-        <!-- ================= FOOTER ================= -->
-        <footer class="footer">
-
-            <p>
-                🌿 <strong>Darukaa.Earth</strong>
-                — AI Biodiversity Intelligence
-            </p>
-
-            <p>
-                Scientific knowledge • Environmental reasoning •
-                Biodiversity observations
-            </p>
-
-        </footer>
-
     </main>
 
 
-    <!-- ================= JAVASCRIPT ================= -->
+    <!-- Footer -->
+    <footer>
+
+        <p>
+            🌿 Darukaa.Earth — AI Biodiversity Intelligence
+        </p>
+
+        <p>
+            Scientific Knowledge • Environmental Reasoning • Biodiversity Data
+        </p>
+
+    </footer>
+
+
     <script src="/static/script.js"></script>
 
 </body>
