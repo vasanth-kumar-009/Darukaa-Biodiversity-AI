@@ -2,9 +2,12 @@
 // DARUKAA.EARTH - BIODIVERSITY INTELLIGENCE FRONTEND
 // ============================================================
 
-// ------------------------------------------------------------
+"use strict";
+
+
+// ============================================================
 // API BASE URL
-// ------------------------------------------------------------
+// ============================================================
 
 const API_BASE_URL =
     window.location.hostname === "localhost" ||
@@ -13,9 +16,9 @@ const API_BASE_URL =
         : window.location.origin;
 
 
-// ------------------------------------------------------------
+// ============================================================
 // SESSION ID
-// ------------------------------------------------------------
+// ============================================================
 
 let sessionId = localStorage.getItem("darukaa_session_id");
 
@@ -35,28 +38,25 @@ if (!sessionId) {
 }
 
 
-// ------------------------------------------------------------
+// ============================================================
 // DOM HELPERS
-// ------------------------------------------------------------
+// ============================================================
 
-function getElement(...ids) {
-
-    for (const id of ids) {
-
-        const element = document.getElementById(id);
-
-        if (element) {
-            return element;
-        }
-    }
-
-    return null;
+function getElement(id) {
+    return document.getElementById(id);
 }
 
 
+// ============================================================
+// ESCAPE HTML
+// ============================================================
+
 function escapeHTML(value) {
 
-    if (value === null || value === undefined) {
+    if (
+        value === null ||
+        value === undefined
+    ) {
         return "";
     }
 
@@ -69,7 +69,14 @@ function escapeHTML(value) {
 }
 
 
-function safeValue(value, fallback = "N/A") {
+// ============================================================
+// SAFE VALUE
+// ============================================================
+
+function safeValue(
+    value,
+    fallback = "N/A"
+) {
 
     if (
         value === null ||
@@ -83,33 +90,38 @@ function safeValue(value, fallback = "N/A") {
 }
 
 
-// ------------------------------------------------------------
-// GET INPUT VALUE
-// ------------------------------------------------------------
+// ============================================================
+// INPUT HELPERS
+// ============================================================
 
 function getInputValue(id) {
 
-    const element = document.getElementById(id);
+    const element = getElement(id);
 
     if (!element) {
         return null;
     }
 
-    const value = element.value.trim();
+    const value =
+        element.value.trim();
 
-    return value === "" ? null : value;
+    return value === ""
+        ? null
+        : value;
 }
 
 
 function getNumberValue(id) {
 
-    const value = getInputValue(id);
+    const value =
+        getInputValue(id);
 
     if (value === null) {
         return null;
     }
 
-    const number = Number(value);
+    const number =
+        Number(value);
 
     return Number.isFinite(number)
         ? number
@@ -117,9 +129,9 @@ function getNumberValue(id) {
 }
 
 
-// ------------------------------------------------------------
-// BUILD ENVIRONMENT PROFILE
-// ------------------------------------------------------------
+// ============================================================
+// BUILD ENVIRONMENT
+// ============================================================
 
 function buildEnvironment() {
 
@@ -127,77 +139,106 @@ function buildEnvironment() {
 
         soil: {
 
-            ph: getNumberValue("ph"),
+            ph:
+                getNumberValue("ph"),
 
             organic_carbon_percent:
-                getNumberValue("organicCarbon"),
+                getNumberValue(
+                    "organicCarbon"
+                ),
 
             moisture_percent:
-                getNumberValue("moisture")
+                getNumberValue(
+                    "moisture"
+                )
         },
 
 
         climate: {
 
             rainfall_mm_year:
-                getNumberValue("rainfall"),
+                getNumberValue(
+                    "rainfall"
+                ),
 
             temperature_celsius:
-                getNumberValue("temperature")
+                getNumberValue(
+                    "temperature"
+                )
         },
 
 
         land: {
 
             land_use:
-                getInputValue("landUse"),
+                getInputValue(
+                    "landUse"
+                ),
 
             crop_type:
-                getInputValue("cropType")
+                getInputValue(
+                    "cropType"
+                )
         },
 
 
         biodiversity: {
 
             species_richness:
-                getInputValue("speciesRichness"),
+                getInputValue(
+                    "speciesRichness"
+                ),
 
             habitat_diversity:
-                getInputValue("habitatDiversity")
+                getInputValue(
+                    "habitatDiversity"
+                )
         },
 
 
         human_impact: {
 
             pollution_level:
-                getInputValue("pollutionLevel"),
+                getInputValue(
+                    "pollutionLevel"
+                ),
 
             deforestation_level:
-                getInputValue("deforestationLevel"),
+                getInputValue(
+                    "deforestationLevel"
+                ),
 
             habitat_fragmentation:
-                getInputValue("habitatFragmentation")
+                getInputValue(
+                    "habitatFragmentation"
+                )
         },
 
 
         location: {
 
             region:
-                getInputValue("region"),
+                getInputValue(
+                    "region"
+                ),
 
             latitude:
-                getNumberValue("latitude"),
+                getNumberValue(
+                    "latitude"
+                ),
 
             longitude:
-                getNumberValue("longitude")
+                getNumberValue(
+                    "longitude"
+                )
         }
     };
 }
 
 
-// ------------------------------------------------------------
+// ============================================================
 // API REQUEST
-// ------------------------------------------------------------
+// ============================================================
 
 async function apiRequest(
     endpoint,
@@ -207,36 +248,52 @@ async function apiRequest(
 
     const options = {
 
-        method,
+        method: method,
 
         headers: {
-            "Content-Type": "application/json"
+            "Content-Type":
+                "application/json"
         }
     };
 
 
     if (body !== null) {
 
-        options.body = JSON.stringify(body);
+        options.body =
+            JSON.stringify(body);
     }
 
 
-    const response = await fetch(
-        API_BASE_URL + endpoint,
-        options
+    console.log(
+        "API Request:",
+        API_BASE_URL + endpoint
     );
 
 
-    let data = null;
+    const response =
+        await fetch(
+            API_BASE_URL + endpoint,
+            options
+        );
+
+
+    console.log(
+        "API Status:",
+        response.status
+    );
+
+
+    let data;
 
     try {
 
-        data = await response.json();
+        data =
+            await response.json();
 
     } catch (error) {
 
         throw new Error(
-            `Server returned an invalid response (${response.status}).`
+            "Server returned an invalid response."
         );
     }
 
@@ -249,9 +306,9 @@ async function apiRequest(
             `Request failed with status ${response.status}.`;
 
 
-        // FastAPI HTTPException detail can be an object
-
-        if (typeof message === "object") {
+        if (
+            typeof message === "object"
+        ) {
 
             message =
                 message.message ||
@@ -260,7 +317,9 @@ async function apiRequest(
         }
 
 
-        throw new Error(message);
+        throw new Error(
+            message
+        );
     }
 
 
@@ -268,40 +327,91 @@ async function apiRequest(
 }
 
 
-// ------------------------------------------------------------
-// SHOW STATUS
-// ------------------------------------------------------------
+// ============================================================
+// STATUS MESSAGE
+// ============================================================
 
-function showStatus(message, type = "info") {
+function showStatus(
+    message,
+    type = "info"
+) {
 
-    let statusElement =
-        getElement(
-            "statusMessage",
-            "status",
-            "apiStatus"
-        );
+    let status =
+        getElement("statusMessage");
 
 
-    if (!statusElement) {
+    if (!status) {
+
+        const buttonContainer =
+            document.querySelector(
+                ".buttons"
+            );
+
+
+        if (buttonContainer) {
+
+            status =
+                document.createElement(
+                    "div"
+                );
+
+            status.id =
+                "statusMessage";
+
+            status.style.marginTop =
+                "15px";
+
+            status.style.padding =
+                "10px 14px";
+
+            status.style.borderRadius =
+                "8px";
+
+            status.style.fontSize =
+                "14px";
+
+            buttonContainer.appendChild(
+                status
+            );
+        }
+    }
+
+
+    if (!status) {
         return;
     }
 
 
-    statusElement.textContent = message;
+    status.textContent =
+        message;
 
-    statusElement.className =
-        `status-message ${type}`;
+
+    if (type === "error") {
+
+        status.style.color =
+            "#b91c1c";
+
+    } else if (type === "success") {
+
+        status.style.color =
+            "#166534";
+
+    } else {
+
+        status.style.color =
+            "#374151";
+    }
 }
 
 
-// ------------------------------------------------------------
-// SHOW LOADING
-// ------------------------------------------------------------
+// ============================================================
+// BUTTON LOADING
+// ============================================================
 
 function setLoading(
     button,
     loading,
-    loadingText = "Processing..."
+    text = "Processing..."
 ) {
 
     if (!button) {
@@ -315,26 +425,93 @@ function setLoading(
             button.textContent;
 
         button.textContent =
-            loadingText;
+            text;
 
-        button.disabled = true;
+        button.disabled =
+            true;
 
     } else {
 
         button.textContent =
             button.dataset.originalText ||
-            button.textContent;
+            "Analyze Environment";
 
-        button.disabled = false;
+        button.disabled =
+            false;
     }
 }
 
 
-// ------------------------------------------------------------
-// FINDINGS
-// ------------------------------------------------------------
+// ============================================================
+// FORMAT UNKNOWN VALUES
+// ============================================================
 
-function renderFindings(findings) {
+function formatObjectValue(value) {
+
+    if (
+        value === null ||
+        value === undefined
+    ) {
+        return "";
+    }
+
+
+    if (typeof value === "string") {
+        return escapeHTML(value);
+    }
+
+
+    if (
+        typeof value === "number" ||
+        typeof value === "boolean"
+    ) {
+        return escapeHTML(value);
+    }
+
+
+    if (Array.isArray(value)) {
+
+        return value
+            .map(item =>
+                formatObjectValue(item)
+            )
+            .join(", ");
+    }
+
+
+    if (typeof value === "object") {
+
+        return Object.entries(value)
+            .map(
+                ([key, val]) => {
+
+                    return `
+                        <div>
+                            <strong>
+                                ${escapeHTML(key)}:
+                            </strong>
+                            ${formatObjectValue(val)}
+                        </div>
+                    `;
+                }
+            )
+            .join("");
+    }
+
+
+    return escapeHTML(
+        String(value)
+    );
+}
+
+
+// ============================================================
+// RENDER FINDINGS
+// ============================================================
+
+function renderFindings(
+    findings
+) {
 
     if (
         !Array.isArray(findings) ||
@@ -342,136 +519,126 @@ function renderFindings(findings) {
     ) {
 
         return `
-            <p class="empty-message">
-                No major environmental findings identified.
+            <p>
+                No major environmental findings
+                were identified.
             </p>
         `;
     }
 
 
     return findings
-        .map((finding) => {
+        .map(
+            (finding, index) => {
 
-            // --------------------------------------------
-            // STRING FINDING
-            // --------------------------------------------
+                if (
+                    typeof finding === "string"
+                ) {
 
-            if (typeof finding === "string") {
+                    return `
+                        <div class="finding-item">
+                            <strong>
+                                Finding ${index + 1}
+                            </strong>
+                            <p>
+                                ${escapeHTML(
+                                    finding
+                                )}
+                            </p>
+                        </div>
+                    `;
+                }
+
+
+                if (
+                    finding &&
+                    typeof finding === "object"
+                ) {
+
+                    const factor =
+                        finding.factor ||
+                        finding.issue ||
+                        finding.finding ||
+                        finding.problem ||
+                        finding.name ||
+                        "Environmental issue";
+
+
+                    const severity =
+                        finding.severity ||
+                        finding.level ||
+                        "";
+
+
+                    const explanation =
+                        finding.explanation ||
+                        finding.reasoning ||
+                        finding.impact ||
+                        finding.description ||
+                        "";
+
+
+                    return `
+                        <div class="finding-item">
+
+                            <h4>
+                                ${escapeHTML(
+                                    factor
+                                )}
+                            </h4>
+
+                            ${
+                                severity
+                                    ? `
+                                        <p>
+                                            <strong>
+                                                Severity:
+                                            </strong>
+                                            ${escapeHTML(
+                                                severity
+                                            )}
+                                        </p>
+                                    `
+                                    : ""
+                            }
+
+                            ${
+                                explanation
+                                    ? `
+                                        <p>
+                                            ${escapeHTML(
+                                                explanation
+                                            )}
+                                        </p>
+                                    `
+                                    : ""
+                            }
+
+                        </div>
+                    `;
+                }
+
 
                 return `
                     <div class="finding-item">
-                        <div class="finding-text">
-                            ${escapeHTML(finding)}
-                        </div>
+                        ${formatObjectValue(
+                            finding
+                        )}
                     </div>
                 `;
             }
-
-
-            // --------------------------------------------
-            // OBJECT FINDING
-            // --------------------------------------------
-
-            if (
-                finding &&
-                typeof finding === "object"
-            ) {
-
-                const issue =
-                    finding.issue ||
-                    finding.finding ||
-                    finding.problem ||
-                    finding.description ||
-                    finding.name ||
-                    "Environmental issue identified";
-
-
-                const severity =
-                    finding.severity ||
-                    finding.level ||
-                    finding.priority ||
-                    "";
-
-
-                const variables =
-                    Array.isArray(finding.variables)
-                        ? finding.variables
-                        : [];
-
-
-                const reasoning =
-                    finding.reasoning ||
-                    finding.explanation ||
-                    finding.impact ||
-                    "";
-
-
-                return `
-                    <div class="finding-item">
-
-                        <div class="finding-title">
-                            ${escapeHTML(issue)}
-                        </div>
-
-                        ${
-                            severity
-                                ? `
-                                    <div class="finding-severity">
-                                        Severity:
-                                        ${escapeHTML(severity)}
-                                    </div>
-                                  `
-                                : ""
-                        }
-
-                        ${
-                            variables.length > 0
-                                ? `
-                                    <div class="finding-variables">
-                                        Variables:
-                                        ${escapeHTML(
-                                            variables.join(", ")
-                                        )}
-                                    </div>
-                                  `
-                                : ""
-                        }
-
-                        ${
-                            reasoning
-                                ? `
-                                    <div class="finding-reasoning">
-                                        ${escapeHTML(reasoning)}
-                                    </div>
-                                  `
-                                : ""
-                        }
-
-                    </div>
-                `;
-            }
-
-
-            // --------------------------------------------
-            // UNKNOWN VALUE
-            // --------------------------------------------
-
-            return `
-                <div class="finding-item">
-                    ${escapeHTML(String(finding))}
-                </div>
-            `;
-
-        })
+        )
         .join("");
 }
 
 
-// ------------------------------------------------------------
-// MULTI-METRIC INTERACTIONS
-// ------------------------------------------------------------
+// ============================================================
+// RENDER INTERACTIONS
+// ============================================================
 
-function renderInteractions(interactions) {
+function renderInteractions(
+    interactions
+) {
 
     if (
         !Array.isArray(interactions) ||
@@ -479,117 +646,98 @@ function renderInteractions(interactions) {
     ) {
 
         return `
-            <p class="empty-message">
-                No multi-metric interactions identified.
+            <p>
+                No multi-metric interactions
+                were identified.
             </p>
         `;
     }
 
 
     return interactions
-        .map((interaction) => {
-
-            // --------------------------------------------
-            // OBJECT
-            // --------------------------------------------
-
-            if (
-                interaction &&
-                typeof interaction === "object"
-            ) {
-
-                let variables = [];
-
+        .map(
+            (interaction, index) => {
 
                 if (
-                    Array.isArray(
-                        interaction.variables
-                    )
+                    typeof interaction === "string"
                 ) {
 
-                    variables =
-                        interaction.variables;
-
-                } else if (
-                    Array.isArray(
-                        interaction.metrics
-                    )
-                ) {
-
-                    variables =
-                        interaction.metrics;
-
-                } else if (
-                    Array.isArray(
-                        interaction.factors
-                    )
-                ) {
-
-                    variables =
-                        interaction.factors;
+                    return `
+                        <div class="interaction-item">
+                            <h4>
+                                Interaction ${index + 1}
+                            </h4>
+                            <p>
+                                ${escapeHTML(
+                                    interaction
+                                )}
+                            </p>
+                        </div>
+                    `;
                 }
 
 
-                const title =
-                    interaction.interaction ||
-                    interaction.title ||
-                    interaction.name ||
-                    (
-                        variables.length > 0
-                            ? variables.join(" + ")
-                            : "Environmental interaction"
-                    );
+                if (
+                    interaction &&
+                    typeof interaction === "object"
+                ) {
+
+                    const title =
+                        interaction.interaction ||
+                        interaction.title ||
+                        interaction.name ||
+                        "Environmental interaction";
 
 
-                const reasoning =
-                    interaction.reasoning ||
-                    interaction.explanation ||
-                    interaction.description ||
-                    "";
+                    const reasoning =
+                        interaction.reasoning ||
+                        interaction.explanation ||
+                        interaction.description ||
+                        "";
+
+
+                    return `
+                        <div class="interaction-item">
+
+                            <h4>
+                                ${escapeHTML(
+                                    title
+                                )}
+                            </h4>
+
+                            ${
+                                reasoning
+                                    ? `
+                                        <p>
+                                            ${escapeHTML(
+                                                reasoning
+                                            )}
+                                        </p>
+                                    `
+                                    : ""
+                            }
+
+                        </div>
+                    `;
+                }
 
 
                 return `
                     <div class="interaction-item">
-
-                        <h4>
-                            ${escapeHTML(title)}
-                        </h4>
-
-                        ${
-                            reasoning
-                                ? `
-                                    <p>
-                                        ${escapeHTML(
-                                            reasoning
-                                        )}
-                                    </p>
-                                  `
-                                : ""
-                        }
-
+                        ${formatObjectValue(
+                            interaction
+                        )}
                     </div>
                 `;
             }
-
-
-            // --------------------------------------------
-            // STRING
-            // --------------------------------------------
-
-            return `
-                <div class="interaction-item">
-                    <p>${escapeHTML(interaction)}</p>
-                </div>
-            `;
-
-        })
+        )
         .join("");
 }
 
 
-// ------------------------------------------------------------
-// RECOMMENDATIONS
-// ------------------------------------------------------------
+// ============================================================
+// RENDER RECOMMENDATIONS
+// ============================================================
 
 function renderRecommendations(
     recommendations
@@ -601,124 +749,121 @@ function renderRecommendations(
     ) {
 
         return `
-            <p class="empty-message">
-                No specific recommendations were generated.
+            <p>
+                No specific recommendations
+                were generated.
             </p>
         `;
     }
 
 
     return recommendations
-        .map((recommendation, index) => {
+        .map(
+            (recommendation, index) => {
 
-            // --------------------------------------------
-            // STRING
-            // --------------------------------------------
+                if (
+                    typeof recommendation === "string"
+                ) {
 
-            if (
-                typeof recommendation === "string"
-            ) {
+                    return `
+                        <div class="recommendation-card">
+
+                            <h4>
+                                Recommendation ${index + 1}
+                            </h4>
+
+                            <p>
+                                ${escapeHTML(
+                                    recommendation
+                                )}
+                            </p>
+
+                        </div>
+                    `;
+                }
+
+
+                const action =
+                    recommendation.action ||
+                    recommendation.recommendation ||
+                    recommendation.title ||
+                    recommendation.intervention ||
+                    `Recommendation ${index + 1}`;
+
+
+                const why =
+                    recommendation.why_it_works ||
+                    recommendation.reasoning ||
+                    recommendation.explanation ||
+                    recommendation.why ||
+                    "";
+
+
+                const metrics =
+                    Array.isArray(
+                        recommendation.impacted_metrics
+                    )
+                        ? recommendation.impacted_metrics
+                        : [];
+
+
+                const timeHorizon =
+                    recommendation.time_horizon ||
+                    recommendation.timeline ||
+                    recommendation.timeframe ||
+                    "";
+
+
+                const confidence =
+                    recommendation.confidence ||
+                    "";
+
 
                 return `
                     <div class="recommendation-card">
 
                         <h4>
-                            Recommendation ${index + 1}
+                            ${escapeHTML(
+                                action
+                            )}
                         </h4>
 
-                        <p>
-                            ${escapeHTML(
-                                recommendation
-                            )}
-                        </p>
 
-                    </div>
-                `;
-            }
-
-
-            // --------------------------------------------
-            // OBJECT
-            // --------------------------------------------
-
-            const action =
-                recommendation.action ||
-                recommendation.recommendation ||
-                recommendation.title ||
-                recommendation.intervention ||
-                "Environmental intervention";
-
-
-            const why =
-                recommendation.why_it_works ||
-                recommendation.reasoning ||
-                recommendation.explanation ||
-                recommendation.why ||
-                "";
-
-
-            const metrics =
-                Array.isArray(
-                    recommendation.impacted_metrics
-                )
-                    ? recommendation.impacted_metrics
-                    : [];
-
-
-            const timeHorizon =
-                recommendation.time_horizon ||
-                recommendation.timeline ||
-                recommendation.timeframe ||
-                "";
-
-
-            const confidence =
-                recommendation.confidence ||
-                "";
-
-
-            return `
-                <div class="recommendation-card">
-
-                    <h4>
-                        ${escapeHTML(action)}
-                    </h4>
-
-
-                    ${
-                        why
-                            ? `
-                                <div class="recommendation-section">
-
-                                    <strong>
-                                        Why it works:
-                                    </strong>
-
+                        ${
+                            why
+                                ? `
                                     <p>
-                                        ${escapeHTML(why)}
+                                        <strong>
+                                            Why it works:
+                                        </strong>
                                     </p>
 
-                                </div>
-                              `
-                            : ""
-                    }
+                                    <p>
+                                        ${escapeHTML(
+                                            why
+                                        )}
+                                    </p>
+                                `
+                                : ""
+                        }
 
 
-                    ${
-                        metrics.length > 0
-                            ? `
-                                <div class="recommendation-section">
+                        ${
+                            metrics.length > 0
+                                ? `
+                                    <p>
+                                        <strong>
+                                            Impacted metrics:
+                                        </strong>
+                                    </p>
 
-                                    <strong>
-                                        Impacted metrics:
-                                    </strong>
-
-                                    <div class="metric-list">
-
+                                    <div>
                                         ${metrics
                                             .map(
                                                 metric => `
-                                                    <span class="metric-tag">
+                                                    <span
+                                                        class="metric-tag"
+                                                    >
                                                         ${escapeHTML(
                                                             metric
                                                         )}
@@ -726,67 +871,54 @@ function renderRecommendations(
                                                 `
                                             )
                                             .join("")}
-
                                     </div>
-
-                                </div>
-                              `
-                            : ""
-                    }
+                                `
+                                : ""
+                        }
 
 
-                    ${
-                        timeHorizon
-                            ? `
-                                <div class="recommendation-section">
-
-                                    <strong>
-                                        Time horizon:
-                                    </strong>
-
-                                    <span>
+                        ${
+                            timeHorizon
+                                ? `
+                                    <p>
+                                        <strong>
+                                            Time horizon:
+                                        </strong>
                                         ${escapeHTML(
                                             timeHorizon
                                         )}
-                                    </span>
-
-                                </div>
-                              `
-                            : ""
-                    }
+                                    </p>
+                                `
+                                : ""
+                        }
 
 
-                    ${
-                        confidence
-                            ? `
-                                <div class="recommendation-section">
-
-                                    <strong>
-                                        Confidence:
-                                    </strong>
-
-                                    <span>
+                        ${
+                            confidence
+                                ? `
+                                    <p>
+                                        <strong>
+                                            Confidence:
+                                        </strong>
                                         ${escapeHTML(
                                             confidence
                                         )}
-                                    </span>
+                                    </p>
+                                `
+                                : ""
+                        }
 
-                                </div>
-                              `
-                            : ""
-                    }
-
-                </div>
-            `;
-
-        })
+                    </div>
+                `;
+            }
+        )
         .join("");
 }
 
 
-// ------------------------------------------------------------
-// SCIENTIFIC EVIDENCE
-// ------------------------------------------------------------
+// ============================================================
+// RENDER SCIENTIFIC EVIDENCE
+// ============================================================
 
 function renderScientificEvidence(
     evidence
@@ -798,7 +930,7 @@ function renderScientificEvidence(
     ) {
 
         return `
-            <p class="empty-message">
+            <p>
                 No scientific evidence was retrieved.
             </p>
         `;
@@ -806,144 +938,89 @@ function renderScientificEvidence(
 
 
     return evidence
-        .map((item, index) => {
+        .map(
+            (item, index) => {
 
-            if (
-                typeof item === "string"
-            ) {
+                if (
+                    typeof item === "string"
+                ) {
+
+                    return `
+                        <div class="evidence-card">
+
+                            <h4>
+                                Evidence ${index + 1}
+                            </h4>
+
+                            <p>
+                                ${escapeHTML(
+                                    item
+                                )}
+                            </p>
+
+                        </div>
+                    `;
+                }
+
+
+                const source =
+                    item.source ||
+                    item.title ||
+                    "Scientific source";
+
+
+                const page =
+                    item.page ??
+                    "Unknown";
+
+
+                const text =
+                    item.evidence ||
+                    item.text ||
+                    item.content ||
+                    item.description ||
+                    "";
+
 
                 return `
                     <div class="evidence-card">
 
                         <h4>
-                            Evidence ${index + 1}
+                            ${escapeHTML(
+                                source
+                            )}
                         </h4>
 
                         <p>
-                            ${escapeHTML(item)}
+                            <strong>
+                                Page:
+                            </strong>
+                            ${escapeHTML(page)}
                         </p>
+
+                        ${
+                            text
+                                ? `
+                                    <p>
+                                        ${escapeHTML(
+                                            text
+                                        )}
+                                    </p>
+                                `
+                                : ""
+                        }
 
                     </div>
                 `;
             }
-
-
-            const source =
-                item.source ||
-                item.title ||
-                "Scientific source";
-
-
-            const page =
-                item.page ??
-                "Unknown";
-
-
-            const text =
-                item.evidence ||
-                item.text ||
-                item.content ||
-                item.description ||
-                "";
-
-
-            return `
-                <div class="evidence-card">
-
-                    <h4>
-                        ${escapeHTML(source)}
-                    </h4>
-
-
-                    <div class="evidence-page">
-
-                        Page:
-                        ${escapeHTML(page)}
-
-                    </div>
-
-
-                    ${
-                        text
-                            ? `
-                                <p>
-                                    ${escapeHTML(text)}
-                                </p>
-                              `
-                            : ""
-                    }
-
-                </div>
-            `;
-
-        })
+        )
         .join("");
 }
 
 
-// ------------------------------------------------------------
-// DATA LIMITATIONS
-// ------------------------------------------------------------
-
-function renderDataLimitations(
-    limitations
-) {
-
-    if (
-        !Array.isArray(limitations) ||
-        limitations.length === 0
-    ) {
-
-        return `
-            <p class="empty-message">
-                No additional data limitations reported.
-            </p>
-        `;
-    }
-
-
-    return `
-        <ul class="limitations-list">
-
-            ${limitations
-                .map((item) => {
-
-                    if (
-                        typeof item === "object" &&
-                        item !== null
-                    ) {
-
-                        const text =
-                            item.description ||
-                            item.message ||
-                            item.reason ||
-                            JSON.stringify(item);
-
-                        return `
-                            <li>
-                                ${escapeHTML(text)}
-                            </li>
-                        `;
-                    }
-
-
-                    return `
-                        <li>
-                            ${escapeHTML(item)}
-                        </li>
-                    `;
-
-                })
-                .join("")}
-
-        </ul>
-    `;
-}
-
-
-// ------------------------------------------------------------
-// LOCATION BIODIVERSITY / GBIF
-// ------------------------------------------------------------
+// ============================================================
+// RENDER LOCATION BIODIVERSITY
+// ============================================================
 
 function renderLocationBiodiversity(
     gbif
@@ -955,24 +1032,24 @@ function renderLocationBiodiversity(
     ) {
 
         return `
-            <p class="empty-message">
-                No location biodiversity information available.
+            <p>
+                No location biodiversity
+                information available.
             </p>
         `;
     }
 
 
-    // --------------------------------------------
-    // GBIF UNAVAILABLE
-    // --------------------------------------------
-
-    if (gbif.available === false) {
+    if (
+        gbif.available === false
+    ) {
 
         return `
-            <div class="gbif-unavailable">
+            <div>
 
                 <p>
-                    GBIF biodiversity data is currently unavailable.
+                    GBIF biodiversity data
+                    is currently unavailable.
                 </p>
 
                 ${
@@ -983,7 +1060,7 @@ function renderLocationBiodiversity(
                                     gbif.error
                                 )}
                             </small>
-                          `
+                        `
                         : ""
                 }
 
@@ -991,10 +1068,6 @@ function renderLocationBiodiversity(
         `;
     }
 
-
-    // --------------------------------------------
-    // DATA
-    // --------------------------------------------
 
     const recordCount =
         gbif.record_count ??
@@ -1022,26 +1095,26 @@ function renderLocationBiodiversity(
             : [];
 
 
-    // Some APIs may return objects
-
     observedTaxa =
-        observedTaxa.map((taxon) => {
+        observedTaxa.map(
+            taxon => {
 
-            if (
-                typeof taxon === "object" &&
-                taxon !== null
-            ) {
+                if (
+                    taxon &&
+                    typeof taxon === "object"
+                ) {
 
-                return (
-                    taxon.scientificName ||
-                    taxon.name ||
-                    taxon.taxon ||
-                    JSON.stringify(taxon)
-                );
+                    return (
+                        taxon.scientificName ||
+                        taxon.name ||
+                        taxon.taxon ||
+                        JSON.stringify(taxon)
+                    );
+                }
+
+                return taxon;
             }
-
-            return taxon;
-        });
+        );
 
 
     const latitude =
@@ -1067,7 +1140,6 @@ function renderLocationBiodiversity(
         <div class="gbif-summary">
 
             <div class="gbif-stat">
-
                 <strong>
                     ${escapeHTML(recordCount)}
                 </strong>
@@ -1075,12 +1147,10 @@ function renderLocationBiodiversity(
                 <span>
                     GBIF records
                 </span>
-
             </div>
 
 
             <div class="gbif-stat">
-
                 <strong>
                     ${escapeHTML(returnedRecords)}
                 </strong>
@@ -1088,20 +1158,19 @@ function renderLocationBiodiversity(
                 <span>
                     Records returned
                 </span>
-
             </div>
 
 
             <div class="gbif-stat">
-
                 <strong>
-                    ${escapeHTML(observedTaxaCount)}
+                    ${escapeHTML(
+                        observedTaxaCount
+                    )}
                 </strong>
 
                 <span>
                     Observed taxa
                 </span>
-
             </div>
 
         </div>
@@ -1111,8 +1180,7 @@ function renderLocationBiodiversity(
             latitude !== null &&
             longitude !== null
                 ? `
-                    <div class="gbif-location">
-
+                    <p>
                         <strong>
                             Search location:
                         </strong>
@@ -1123,15 +1191,14 @@ function renderLocationBiodiversity(
                         ${
                             radius !== null
                                 ? `
-                                    <span>
-                                        (${escapeHTML(radius)} km radius)
-                                    </span>
-                                  `
+                                    (${escapeHTML(
+                                        radius
+                                    )} km radius)
+                                `
                                 : ""
                         }
-
-                    </div>
-                  `
+                    </p>
+                `
                 : ""
         }
 
@@ -1139,83 +1206,68 @@ function renderLocationBiodiversity(
         ${
             observedTaxa.length > 0
                 ? `
-                    <div class="gbif-species">
+                    <h4>
+                        Observed taxa
+                    </h4>
 
-                        <h4>
-                            Observed taxa
-                        </h4>
+                    <ul>
+                        ${observedTaxa
+                            .slice(0, 20)
+                            .map(
+                                taxon => `
+                                    <li>
+                                        ${escapeHTML(
+                                            taxon
+                                        )}
+                                    </li>
+                                `
+                            )
+                            .join("")}
+                    </ul>
 
-                        <ul>
-
-                            ${observedTaxa
-                                .slice(0, 20)
-                                .map(
-                                    taxon => `
-                                        <li>
-                                            ${escapeHTML(
-                                                taxon
-                                            )}
-                                        </li>
-                                    `
-                                )
-                                .join("")}
-
-                        </ul>
-
-                        ${
-                            observedTaxa.length > 20
-                                ? `
-                                    <small>
-                                        Showing the first
-                                        20 observed taxa.
-                                    </small>
-                                  `
-                                : ""
-                        }
-
-                    </div>
-                  `
+                    ${
+                        observedTaxa.length > 20
+                            ? `
+                                <small>
+                                    Showing first
+                                    20 observed taxa.
+                                </small>
+                            `
+                            : ""
+                    }
+                `
                 : `
-                    <p class="empty-message">
-                        No observed taxa were returned by GBIF.
+                    <p>
+                        No observed taxa were
+                        returned by GBIF.
                     </p>
-                  `
+                `
         }
 
 
-        <p class="gbif-note">
-
-            GBIF occurrence records provide geographic
-            biodiversity context. They are not a complete
-            measurement of true species richness, and missing
+        <p>
+            <strong>Note:</strong>
+            GBIF occurrence records provide
+            geographic biodiversity context.
+            They are not a complete measurement
+            of true species richness, and missing
             observations do not prove species absence.
-
         </p>
 
     `;
 }
 
 
-// ------------------------------------------------------------
-// LOCATION INFORMATION
-// ------------------------------------------------------------
+// ============================================================
+// RENDER LOCATION
+// ============================================================
 
 function renderLocation(
     environment
 ) {
 
-    if (
-        !environment ||
-        typeof environment !== "object"
-    ) {
-
-        return "";
-    }
-
-
     const location =
-        environment.location ||
-        {};
+        environment?.location || {};
 
 
     const region =
@@ -1236,24 +1288,30 @@ function renderLocation(
         longitude === null
     ) {
 
-        return "";
+        return `
+            <p>
+                No location information provided.
+            </p>
+        `;
     }
 
 
     return `
+
         <div class="location-info">
 
             ${
                 region
                     ? `
-                        <div>
+                        <p>
                             <strong>
                                 Region:
                             </strong>
-
-                            ${escapeHTML(region)}
-                        </div>
-                      `
+                            ${escapeHTML(
+                                region
+                            )}
+                        </p>
+                    `
                     : ""
             }
 
@@ -1262,14 +1320,15 @@ function renderLocation(
                 latitude !== null &&
                 latitude !== undefined
                     ? `
-                        <div>
+                        <p>
                             <strong>
                                 Latitude:
                             </strong>
-
-                            ${escapeHTML(latitude)}
-                        </div>
-                      `
+                            ${escapeHTML(
+                                latitude
+                            )}
+                        </p>
+                    `
                     : ""
             }
 
@@ -1278,107 +1337,164 @@ function renderLocation(
                 longitude !== null &&
                 longitude !== undefined
                     ? `
-                        <div>
+                        <p>
                             <strong>
                                 Longitude:
                             </strong>
-
-                            ${escapeHTML(longitude)}
-                        </div>
-                      `
+                            ${escapeHTML(
+                                longitude
+                            )}
+                        </p>
+                    `
                     : ""
             }
 
         </div>
+
     `;
 }
 
 
-// ------------------------------------------------------------
-// OVERALL ASSESSMENT
-// ------------------------------------------------------------
+// ============================================================
+// RENDER DATA LIMITATIONS
+// ============================================================
+
+function renderDataLimitations(
+    limitations
+) {
+
+    if (
+        !Array.isArray(limitations) ||
+        limitations.length === 0
+    ) {
+
+        return `
+            <p>
+                No additional data limitations reported.
+            </p>
+        `;
+    }
+
+
+    return `
+        <ul>
+
+            ${limitations
+                .map(
+                    item => {
+
+                        if (
+                            item &&
+                            typeof item === "object"
+                        ) {
+
+                            return `
+                                <li>
+                                    ${escapeHTML(
+                                        item.description ||
+                                        item.message ||
+                                        item.reason ||
+                                        JSON.stringify(item)
+                                    )}
+                                </li>
+                            `;
+                        }
+
+
+                        return `
+                            <li>
+                                ${escapeHTML(item)}
+                            </li>
+                        `;
+                    }
+                )
+                .join("")}
+
+        </ul>
+    `;
+}
+
+
+// ============================================================
+// RENDER ASSESSMENT
+// ============================================================
 
 function renderAssessment(
     response,
     analysis
 ) {
 
-    if (
-        response &&
-        typeof response === "object" &&
-        response.assessment
-    ) {
+    const assessment =
+        response?.assessment ||
+        analysis?.overall_assessment ||
+        analysis?.assessment ||
+        analysis?.overall;
+
+
+    if (!assessment) {
 
         return `
             <p>
-                ${escapeHTML(
-                    response.assessment
-                )}
+                No overall assessment was returned.
             </p>
         `;
     }
 
 
-    if (
-        analysis &&
-        typeof analysis === "object"
-    ) {
-
-        if (analysis.overall_assessment) {
-
-            return `
-                <p>
-                    ${escapeHTML(
-                        analysis.overall_assessment
-                    )}
-                </p>
-            `;
-        }
-
-
-        if (analysis.assessment) {
-
-            return `
-                <p>
-                    ${escapeHTML(
-                        analysis.assessment
-                    )}
-                </p>
-            `;
-        }
-
-
-        if (analysis.overall) {
-
-            return `
-                <p>
-                    ${escapeHTML(
-                        analysis.overall
-                    )}
-                </p>
-            `;
-        }
-    }
-
-
     return `
         <p>
-            No overall assessment was returned.
+            ${escapeHTML(
+                assessment
+            )}
         </p>
     `;
 }
 
 
-// ------------------------------------------------------------
-// DISPLAY ANALYSIS
-// ------------------------------------------------------------
+// ============================================================
+// DISPLAY COMPLETE ANALYSIS
+// ============================================================
 
-function displayAnalysis(data) {
+function displayAnalysis(
+    data
+) {
 
     console.log(
-        "Complete biodiversity API response:",
+        "Complete API response:",
         data
     );
+
+
+    const resultsSection =
+        getElement(
+            "analysisResults"
+        );
+
+
+    const resultsContent =
+        getElement(
+            "resultsContent"
+        );
+
+
+    if (!resultsSection) {
+
+        console.error(
+            "analysisResults element not found."
+        );
+
+        return;
+    }
+
+
+    if (!resultsContent) {
+
+        console.error(
+            "resultsContent element not found."
+        );
+
+        return;
+    }
 
 
     const analysis =
@@ -1389,278 +1505,284 @@ function displayAnalysis(data) {
         data.response || {};
 
 
-    // --------------------------------------------------------
-    // OVERALL ASSESSMENT
-    // --------------------------------------------------------
-
-    const assessmentContainer =
-        getElement(
-            "assessment",
-            "overallAssessment",
-            "assessmentContent"
-        );
+    const findings =
+        Array.isArray(
+            analysis.findings
+        )
+            ? analysis.findings
+            : [];
 
 
-    if (assessmentContainer) {
-
-        assessmentContainer.innerHTML =
-            renderAssessment(
-                response,
-                analysis
+    const interactions =
+        Array.isArray(
+            response.key_interactions
+        )
+            ? response.key_interactions
+            : (
+                Array.isArray(
+                    analysis.interactions
+                )
+                    ? analysis.interactions
+                    : []
             );
-    }
 
 
-    // --------------------------------------------------------
-    // FINDINGS
-    // --------------------------------------------------------
-
-    const findingsContainer =
-        getElement(
-            "findings",
-            "keyFindings",
-            "findingsContainer"
-        );
-
-
-    if (findingsContainer) {
-
-        const findings =
-            analysis.findings ||
-            analysis.key_findings ||
-            [];
-
-
-        findingsContainer.innerHTML =
-            renderFindings(findings);
-    }
-
-
-    // --------------------------------------------------------
-    // INTERACTIONS
-    // --------------------------------------------------------
-
-    const interactionsContainer =
-        getElement(
-            "interactions",
-            "multiMetricInteractions",
-            "interactionsContainer"
-        );
-
-
-    if (interactionsContainer) {
-
-        const interactions =
-            response.key_interactions ||
-            analysis.interactions ||
-            [];
-
-
-        interactionsContainer.innerHTML =
-            renderInteractions(
-                interactions
+    const recommendations =
+        Array.isArray(
+            response.recommendations
+        )
+            ? response.recommendations
+            : (
+                Array.isArray(
+                    analysis.recommendations
+                )
+                    ? analysis.recommendations
+                    : []
             );
-    }
 
 
-    // --------------------------------------------------------
-    // RECOMMENDATIONS
-    // --------------------------------------------------------
-
-    const recommendationsContainer =
-        getElement(
-            "recommendations",
-            "recommendationList",
-            "recommendationsContainer"
-        );
-
-
-    if (recommendationsContainer) {
-
-        const recommendations =
-            response.recommendations ||
-            analysis.recommendations ||
-            [];
-
-
-        recommendationsContainer.innerHTML =
-            renderRecommendations(
-                recommendations
+    const evidence =
+        Array.isArray(
+            response.scientific_evidence
+        )
+            ? response.scientific_evidence
+            : (
+                Array.isArray(
+                    data.scientific_evidence
+                )
+                    ? data.scientific_evidence
+                    : []
             );
-    }
 
 
-    // --------------------------------------------------------
-    // SCIENTIFIC EVIDENCE
-    // --------------------------------------------------------
-
-    const evidenceContainer =
-        getElement(
-            "scientificEvidence",
-            "evidence",
-            "evidenceContainer"
-        );
-
-
-    if (evidenceContainer) {
-
-        const evidence =
-            response.scientific_evidence ||
-            data.scientific_evidence ||
-            [];
-
-
-        evidenceContainer.innerHTML =
-            renderScientificEvidence(
-                evidence
+    const limitations =
+        Array.isArray(
+            response.data_limitations
+        )
+            ? response.data_limitations
+            : (
+                Array.isArray(
+                    data.data_quality?.warnings
+                )
+                    ? data.data_quality.warnings
+                    : []
             );
-    }
 
 
     // --------------------------------------------------------
-    // LOCATION BIODIVERSITY
+    // BUILD COMPLETE RESULTS HTML
     // --------------------------------------------------------
 
-    const gbifContainer =
-        getElement(
-            "locationBiodiversity",
-            "gbifResults",
-            "gbif",
-            "locationBiodiversityContainer"
-        );
+    resultsContent.innerHTML = `
 
+        <div class="analysis-block">
 
-    if (gbifContainer) {
+            <h3>
+                🌍 Overall Assessment
+            </h3>
 
-        gbifContainer.innerHTML =
-            renderLocationBiodiversity(
-                data.location_biodiversity
-            );
-    }
+            <div class="assessment-box">
 
-
-    // --------------------------------------------------------
-    // DATA LIMITATIONS
-    // --------------------------------------------------------
-
-    const limitationsContainer =
-        getElement(
-            "dataLimitations",
-            "limitations",
-            "limitationsContainer"
-        );
-
-
-    if (limitationsContainer) {
-
-        const limitations =
-            response.data_limitations ||
-            data.data_quality?.warnings ||
-            [];
-
-
-        limitationsContainer.innerHTML =
-            renderDataLimitations(
-                limitations
-            );
-    }
-
-
-    // --------------------------------------------------------
-    // LOCATION
-    // --------------------------------------------------------
-
-    const locationContainer =
-        getElement(
-            "locationResult",
-            "locationInfo",
-            "locationDisplay"
-        );
-
-
-    if (locationContainer) {
-
-        locationContainer.innerHTML =
-            renderLocation(
-                data.environment
-            );
-    }
-
-
-    // --------------------------------------------------------
-    // DATA QUALITY
-    // --------------------------------------------------------
-
-    const qualityContainer =
-        getElement(
-            "dataQuality",
-            "quality"
-        );
-
-
-    if (
-        qualityContainer &&
-        data.data_quality
-    ) {
-
-        const quality =
-            data.data_quality;
-
-
-        qualityContainer.innerHTML = `
-            <div class="data-quality">
-
-                <strong>
-                    Data completeness:
-                </strong>
-
-                ${escapeHTML(
-                    safeValue(
-                        quality.completeness_percent,
-                        0
-                    )
-                )}%
+                ${renderAssessment(
+                    response,
+                    analysis
+                )}
 
             </div>
-        `;
-    }
+
+        </div>
+
+
+        <div class="analysis-block">
+
+            <h3>
+                🔎 Key Environmental Findings
+            </h3>
+
+            <div class="findings-box">
+
+                ${renderFindings(
+                    findings
+                )}
+
+            </div>
+
+        </div>
+
+
+        <div class="analysis-block">
+
+            <h3>
+                🔗 Multi-Metric Interactions
+            </h3>
+
+            <div class="interactions-box">
+
+                ${renderInteractions(
+                    interactions
+                )}
+
+            </div>
+
+        </div>
+
+
+        <div class="analysis-block">
+
+            <h3>
+                🌱 Recommendations
+            </h3>
+
+            <div class="recommendations-box">
+
+                ${renderRecommendations(
+                    recommendations
+                )}
+
+            </div>
+
+        </div>
+
+
+        <div class="analysis-block">
+
+            <h3>
+                🔬 Scientific Evidence
+            </h3>
+
+            <div class="evidence-box">
+
+                ${renderScientificEvidence(
+                    evidence
+                )}
+
+            </div>
+
+        </div>
+
+
+        <div class="analysis-block">
+
+            <h3>
+                📍 Location
+            </h3>
+
+            ${renderLocation(
+                data.environment
+            )}
+
+        </div>
+
+
+        <div class="analysis-block">
+
+            <h3>
+                📍 Location Biodiversity
+            </h3>
+
+            ${renderLocationBiodiversity(
+                data.location_biodiversity
+            )}
+
+        </div>
+
+
+        <div class="analysis-block">
+
+            <h3>
+                ⚠️ Data Limitations
+            </h3>
+
+            ${renderDataLimitations(
+                limitations
+            )}
+
+        </div>
+
+
+        ${
+            data.data_quality
+                ? `
+                    <div class="analysis-block">
+
+                        <h3>
+                            📋 Data Quality
+                        </h3>
+
+                        <p>
+                            <strong>
+                                Data completeness:
+                            </strong>
+
+                            ${escapeHTML(
+                                safeValue(
+                                    data.data_quality
+                                        .completeness_percent,
+                                    0
+                                )
+                            )}%
+                        </p>
+
+                        ${
+                            Array.isArray(
+                                data.data_quality.warnings
+                            ) &&
+                            data.data_quality.warnings.length
+                                ? `
+                                    <ul>
+                                        ${data.data_quality.warnings
+                                            .map(
+                                                warning => `
+                                                    <li>
+                                                        ${escapeHTML(
+                                                            warning
+                                                        )}
+                                                    </li>
+                                                `
+                                            )
+                                            .join("")}
+                                    </ul>
+                                `
+                                : ""
+                        }
+
+                    </div>
+                `
+                : ""
+        }
+
+    `;
 
 
     // --------------------------------------------------------
     // SHOW RESULTS
     // --------------------------------------------------------
 
-    const resultsContainer =
-        getElement(
-            "results",
-            "analysisResults",
-            "resultsSection"
-        );
+    resultsSection.style.display =
+        "block";
 
 
-    if (resultsContainer) {
+    resultsSection.scrollIntoView({
+        behavior: "smooth",
+        block: "start"
+    });
 
-        resultsContainer.style.display =
-            "block";
 
-        resultsContainer.scrollIntoView({
-            behavior: "smooth",
-            block: "start"
-        });
-    }
+    console.log(
+        "Analysis displayed successfully."
+    );
 }
 
 
-// ------------------------------------------------------------
+// ============================================================
 // ANALYZE ENVIRONMENT
-// ------------------------------------------------------------
+// ============================================================
 
 async function analyzeEnvironment() {
 
     const button =
         getElement(
-            "analyzeBtn",
-            "analyzeButton"
+            "analyzeBtn"
         );
 
 
@@ -1675,7 +1797,7 @@ async function analyzeEnvironment() {
 
         showStatus(
             "Analyzing environmental conditions...",
-            "loading"
+            "info"
         );
 
 
@@ -1690,8 +1812,21 @@ async function analyzeEnvironment() {
 
 
         const question =
-            getInputValue("question") ||
+            getInputValue(
+                "question"
+            ) ||
             "Analyze this environment and provide biodiversity recommendations.";
+
+
+        console.log(
+            "Sending /analyze request..."
+        );
+
+
+        showStatus(
+            "Running environmental reasoning, scientific RAG, biodiversity data and AI analysis...",
+            "info"
+        );
 
 
         const data =
@@ -1699,13 +1834,24 @@ async function analyzeEnvironment() {
                 "/analyze",
                 "POST",
                 {
-                    question,
-                    environment
+                    question:
+                        question,
+
+                    environment:
+                        environment
                 }
             );
 
 
-        displayAnalysis(data);
+        console.log(
+            "Received analysis:",
+            data
+        );
+
+
+        displayAnalysis(
+            data
+        );
 
 
         showStatus(
@@ -1723,18 +1869,15 @@ async function analyzeEnvironment() {
 
 
         showStatus(
-            error.message ||
-            "Biodiversity analysis failed.",
+            "Analysis failed: " +
+            error.message,
             "error"
         );
 
 
         alert(
             "Biodiversity analysis failed:\n\n" +
-            (
-                error.message ||
-                "Unknown error"
-            )
+            error.message
         );
 
 
@@ -1748,9 +1891,9 @@ async function analyzeEnvironment() {
 }
 
 
-// ------------------------------------------------------------
-// CHAT MESSAGE RENDERING
-// ------------------------------------------------------------
+// ============================================================
+// CHAT MESSAGE
+// ============================================================
 
 function addChatMessage(
     role,
@@ -1759,9 +1902,7 @@ function addChatMessage(
 
     const chatContainer =
         getElement(
-            "chatMessages",
-            "chatHistory",
-            "messages"
+            "chatMessages"
         );
 
 
@@ -1771,28 +1912,51 @@ function addChatMessage(
 
 
     const messageDiv =
-        document.createElement("div");
+        document.createElement(
+            "div"
+        );
 
 
     messageDiv.className =
-        `chat-message ${role}`;
+        `message ${role}`;
 
 
-    const content =
+    let text;
+
+
+    if (
+        message &&
         typeof message === "object"
-            ? (
-                message.assessment ||
-                JSON.stringify(message)
-            )
-            : message;
+    ) {
+
+        text =
+            message.assessment ||
+            message.message ||
+            JSON.stringify(
+                message
+            );
+
+    } else {
+
+        text =
+            String(message);
+    }
 
 
     messageDiv.innerHTML = `
-        <div class="chat-bubble">
 
-            ${escapeHTML(content)}
+        <strong>
+            ${
+                role === "user"
+                    ? "You"
+                    : "Darukaa.Earth"
+            }
+        </strong>
 
-        </div>
+        <p>
+            ${escapeHTML(text)}
+        </p>
+
     `;
 
 
@@ -1806,25 +1970,20 @@ function addChatMessage(
 }
 
 
-// ------------------------------------------------------------
+// ============================================================
 // SEND CHAT MESSAGE
-// ------------------------------------------------------------
+// ============================================================
 
 async function sendChatMessage() {
 
     const input =
         getElement(
-            "question",
-            "chatInput",
-            "messageInput"
+            "question"
         );
 
 
     const button =
         getElement(
-            "sendButton",
-            "sendChatBtn",
-            "chatBtn",
             "sendButton"
         );
 
@@ -1832,7 +1991,7 @@ async function sendChatMessage() {
     if (!input) {
 
         console.error(
-            "Chat input element not found."
+            "Question input not found."
         );
 
         return;
@@ -1844,6 +2003,10 @@ async function sendChatMessage() {
 
 
     if (!question) {
+
+        alert(
+            "Please enter a question."
+        );
 
         return;
     }
@@ -1869,7 +2032,7 @@ async function sendChatMessage() {
 
         showStatus(
             "Processing your question...",
-            "loading"
+            "info"
         );
 
 
@@ -1877,20 +2040,19 @@ async function sendChatMessage() {
             buildEnvironment();
 
 
-        console.log(
-            "Chat environment:",
-            environment
-        );
-
-
         const data =
             await apiRequest(
                 "/chat",
                 "POST",
                 {
-                    session_id: sessionId,
-                    question,
-                    environment
+                    session_id:
+                        sessionId,
+
+                    question:
+                        question,
+
+                    environment:
+                        environment
                 }
             );
 
@@ -1899,25 +2061,10 @@ async function sendChatMessage() {
             data.response || {};
 
 
-        let assistantMessage =
-            "";
-
-
-        if (
-            response &&
-            typeof response === "object"
-        ) {
-
-            assistantMessage =
-                response.assessment ||
-                response.message ||
-                "Analysis completed.";
-
-        } else {
-
-            assistantMessage =
-                String(response);
-        }
+        const assistantMessage =
+            response.assessment ||
+            response.message ||
+            "Analysis completed successfully.";
 
 
         addChatMessage(
@@ -1926,9 +2073,10 @@ async function sendChatMessage() {
         );
 
 
-        // Update the analysis sections as well
-
-        displayAnalysis(data);
+        // Update analysis results too.
+        displayAnalysis(
+            data
+        );
 
 
         showStatus(
@@ -1952,8 +2100,8 @@ async function sendChatMessage() {
 
 
         showStatus(
-            error.message ||
-            "Chat request failed.",
+            "Chat failed: " +
+            error.message,
             "error"
         );
 
@@ -1968,9 +2116,9 @@ async function sendChatMessage() {
 }
 
 
-// ------------------------------------------------------------
+// ============================================================
 // CLEAR FORM
-// ------------------------------------------------------------
+// ============================================================
 
 function clearForm() {
 
@@ -2001,85 +2149,44 @@ function clearForm() {
     ];
 
 
-    fieldIds.forEach((id) => {
+    fieldIds.forEach(
+        id => {
 
-        const element =
-            document.getElementById(id);
+            const element =
+                getElement(id);
 
 
-        if (element) {
+            if (element) {
 
-            element.value = "";
+                element.value =
+                    "";
+            }
         }
-    });
+    );
 
 
-    // Clear result containers
-
-    const resultIds = [
-
-        "assessment",
-        "overallAssessment",
-        "assessmentContent",
-
-        "findings",
-        "keyFindings",
-        "findingsContainer",
-
-        "interactions",
-        "multiMetricInteractions",
-        "interactionsContainer",
-
-        "recommendations",
-        "recommendationList",
-        "recommendationsContainer",
-
-        "scientificEvidence",
-        "evidence",
-        "evidenceContainer",
-
-        "locationBiodiversity",
-        "gbifResults",
-        "gbif",
-        "locationBiodiversityContainer",
-
-        "dataLimitations",
-        "limitations",
-        "limitationsContainer",
-
-        "locationResult",
-        "locationInfo",
-        "locationDisplay",
-
-        "dataQuality",
-        "quality"
-    ];
-
-
-    resultIds.forEach((id) => {
-
-        const element =
-            document.getElementById(id);
-
-
-        if (element) {
-
-            element.innerHTML = "";
-        }
-    });
-
-
-    const resultsContainer =
+    const resultsSection =
         getElement(
-            "results",
-            "analysisResults",
-            "resultsSection"
+            "analysisResults"
         );
 
 
-    if (resultsContainer) {
+    const resultsContent =
+        getElement(
+            "resultsContent"
+        );
 
-        resultsContainer.style.display =
+
+    if (resultsContent) {
+
+        resultsContent.innerHTML =
+            "";
+    }
+
+
+    if (resultsSection) {
+
+        resultsSection.style.display =
             "none";
     }
 
@@ -2091,23 +2198,37 @@ function clearForm() {
 }
 
 
-// ------------------------------------------------------------
+// ============================================================
 // CLEAR CHAT
-// ------------------------------------------------------------
+// ============================================================
 
 function clearChat() {
 
     const chatContainer =
         getElement(
-            "chatMessages",
-            "chatHistory",
-            "messages"
+            "chatMessages"
         );
 
 
     if (chatContainer) {
 
-        chatContainer.innerHTML = "";
+        chatContainer.innerHTML = `
+
+            <div class="message assistant">
+
+                <strong>
+                    Darukaa.Earth
+                </strong>
+
+                <p>
+                    Hello! Enter your environmental
+                    information above and ask me
+                    a question about your ecosystem.
+                </p>
+
+            </div>
+
+        `;
     }
 
 
@@ -2133,17 +2254,17 @@ function clearChat() {
 }
 
 
-// ------------------------------------------------------------
-// SUGGESTION BUTTON
-// ------------------------------------------------------------
+// ============================================================
+// SUGGESTION BUTTONS
+// ============================================================
 
-function useSuggestion(text) {
+function useSuggestion(
+    text
+) {
 
     const input =
         getElement(
-            "question",
-            "chatInput",
-            "messageInput"
+            "question"
         );
 
 
@@ -2152,15 +2273,17 @@ function useSuggestion(text) {
     }
 
 
-    input.value = text;
+    input.value =
+        text;
+
 
     input.focus();
 }
 
 
-// ------------------------------------------------------------
-// HEALTH CHECK
-// ------------------------------------------------------------
+// ============================================================
+// BACKEND HEALTH CHECK
+// ============================================================
 
 async function checkBackend() {
 
@@ -2174,7 +2297,7 @@ async function checkBackend() {
 
 
         console.log(
-            "Darukaa backend:",
+            "Darukaa backend connected:",
             data
         );
 
@@ -2201,28 +2324,34 @@ async function checkBackend() {
 }
 
 
-// ------------------------------------------------------------
+// ============================================================
 // EVENT LISTENERS
-// ------------------------------------------------------------
+// ============================================================
 
 document.addEventListener(
     "DOMContentLoaded",
     () => {
 
         console.log(
-            "Darukaa.Earth frontend initialized."
+            "================================="
         );
 
+        console.log(
+            "Darukaa.Earth frontend initialized."
+        );
 
         console.log(
             "API:",
             API_BASE_URL
         );
 
-
         console.log(
             "Session:",
             sessionId
+        );
+
+        console.log(
+            "================================="
         );
 
 
@@ -2232,8 +2361,7 @@ document.addEventListener(
 
         const analyzeButton =
             getElement(
-                "analyzeBtn",
-                "analyzeButton"
+                "analyzeBtn"
             );
 
 
@@ -2243,18 +2371,22 @@ document.addEventListener(
                 "click",
                 analyzeEnvironment
             );
+
+        } else {
+
+            console.error(
+                "Analyze button not found."
+            );
         }
 
 
         // ----------------------------------------------------
-        // SEND CHAT
+        // SEND CHAT BUTTON
         // ----------------------------------------------------
 
         const sendButton =
             getElement(
-                "sendButton",
-                "sendChatBtn",
-                "chatBtn"
+                "sendButton"
             );
 
 
@@ -2268,14 +2400,12 @@ document.addEventListener(
 
 
         // ----------------------------------------------------
-        // ENTER KEY FOR CHAT
+        // CHAT ENTER KEY
         // ----------------------------------------------------
 
         const questionInput =
             getElement(
-                "question",
-                "chatInput",
-                "messageInput"
+                "question"
             );
 
 
@@ -2283,7 +2413,7 @@ document.addEventListener(
 
             questionInput.addEventListener(
                 "keydown",
-                (event) => {
+                event => {
 
                     if (
                         event.key === "Enter" &&
@@ -2300,13 +2430,12 @@ document.addEventListener(
 
 
         // ----------------------------------------------------
-        // CLEAR BUTTON
+        // CLEAR FORM
         // ----------------------------------------------------
 
         const clearButton =
             getElement(
-                "clearBtn",
-                "clearButton"
+                "clearBtn"
             );
 
 
@@ -2320,13 +2449,12 @@ document.addEventListener(
 
 
         // ----------------------------------------------------
-        // CLEAR CHAT BUTTON
+        // OPTIONAL CLEAR CHAT BUTTON
         // ----------------------------------------------------
 
         const clearChatButton =
             getElement(
-                "clearChat",
-                "clearChatBtn"
+                "clearChat"
             );
 
 
@@ -2350,7 +2478,7 @@ document.addEventListener(
 
 
         suggestionButtons.forEach(
-            (button) => {
+            button => {
 
                 button.addEventListener(
                     "click",
@@ -2366,7 +2494,7 @@ document.addEventListener(
 
 
         // ----------------------------------------------------
-        // OPTIONAL BACKEND CHECK
+        // BACKEND CHECK
         // ----------------------------------------------------
 
         checkBackend();
