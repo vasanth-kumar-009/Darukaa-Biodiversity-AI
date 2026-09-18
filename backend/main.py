@@ -7,8 +7,9 @@ from pathlib import Path
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
-from pydantic import BaseModel, Field
+from fastapi.staticfiles import StaticFiles
 
+from pydantic import BaseModel, Field
 
 # ============================================================
 # PROJECT PATHS
@@ -43,14 +44,29 @@ from backend.biodiversity_pipeline import run_pipeline
 
 app = FastAPI(
     title="Darukaa.Earth Biodiversity Intelligence API",
+
     description=(
         "AI-powered biodiversity and environmental "
         "intelligence system using scientific RAG, "
         "environmental reasoning, structured knowledge, "
         "GBIF biodiversity data, and Gemini."
     ),
+
     version="1.0.0"
 )
+
+
+# ============================================================
+# STATIC FRONTEND FILES
+# ============================================================
+
+if FRONTEND_DIR.exists():
+
+    app.mount(
+        "/static",
+        StaticFiles(directory=str(FRONTEND_DIR)),
+        name="static"
+    )
 
 
 # ============================================================
@@ -59,15 +75,21 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
+
     allow_origins=[
         "http://127.0.0.1:5500",
         "http://localhost:5500",
+
         "http://127.0.0.1:8000",
         "http://localhost:8000",
+
         "https://darukaa-biodiversity-ai.vercel.app"
     ],
+
     allow_credentials=True,
+
     allow_methods=["*"],
+
     allow_headers=["*"],
 )
 
@@ -124,12 +146,18 @@ class Biodiversity(BaseModel):
 
     species_richness: str | None = Field(
         default=None,
-        description="Species richness: low, moderate, medium, or high"
+        description=(
+            "Species richness: low, moderate, "
+            "medium, or high"
+        )
     )
 
     habitat_diversity: str | None = Field(
         default=None,
-        description="Habitat diversity: low, moderate, medium, or high"
+        description=(
+            "Habitat diversity: low, moderate, "
+            "medium, or high"
+        )
     )
 
 
@@ -228,16 +256,20 @@ class ChatRequest(BaseModel):
 # HELPER FUNCTIONS
 # ============================================================
 
-def profile_to_dict(profile: EnvironmentalProfile):
+def profile_to_dict(
+    profile: EnvironmentalProfile
+):
     """
-    Convert Pydantic environmental profile to a normal
-    Python dictionary.
+    Convert Pydantic environmental profile
+    into a normal Python dictionary.
     """
 
     return profile.model_dump()
 
 
-def validate_profile(profile_dict):
+def validate_profile(
+    profile_dict
+):
     """
     Run the project's custom environmental validation.
     """
@@ -258,20 +290,27 @@ def validate_profile(profile_dict):
             )
         )
 
-    if not validation_result.get("valid", False):
+    if not validation_result.get(
+        "valid",
+        False
+    ):
 
         raise HTTPException(
             status_code=422,
+
             detail={
                 "message": "Invalid environmental data",
+
                 "errors": validation_result.get(
                     "errors",
                     []
                 ),
+
                 "warnings": validation_result.get(
                     "warnings",
                     []
                 ),
+
                 "completeness_percent":
                     validation_result.get(
                         "completeness_percent",
@@ -296,11 +335,13 @@ async def root():
     """
     Serve the Darukaa.Earth frontend.
 
-    In production this allows:
+    The browser opens:
 
-        https://darukaa-biodiversity-ai.vercel.app/
+        /
 
-    to directly open the chatbot UI.
+    and FastAPI returns:
+
+        frontend/index.html
     """
 
     if FRONTEND_INDEX.exists():
@@ -309,8 +350,6 @@ async def root():
             str(FRONTEND_INDEX),
             media_type="text/html"
         )
-
-    # Fallback if frontend files are unavailable
 
     return {
         "name":
@@ -336,6 +375,7 @@ async def health():
 
     return {
         "status": "healthy",
+
         "service":
             "Darukaa.Earth Biodiversity Intelligence API"
     }
@@ -375,7 +415,6 @@ async def info():
             "Conversational memory",
 
             "Structured JSON input"
-
         ],
 
         "knowledge_sources": [
@@ -389,9 +428,7 @@ async def info():
             "Structured environmental dataset",
 
             "GBIF biodiversity observations"
-
         ]
-
     }
 
 
@@ -449,8 +486,11 @@ async def analyze(
         # ----------------------------------------------------
 
         result = run_pipeline(
+
             profile=profile,
+
             user_question=request.question,
+
             chat_history=None
         )
 
@@ -501,7 +541,6 @@ async def analyze(
 
             "data_quality":
                 data_quality
-
         }
 
 
@@ -517,6 +556,7 @@ async def analyze(
         print("ERROR IN /analyze")
         print("=" * 60)
         print(str(e))
+        print("=" * 60)
 
         raise HTTPException(
             status_code=500,
@@ -562,8 +602,8 @@ async def chat(
         if request.environment is not None:
 
             profile = profile_to_dict(
-                    request.environment
-                )
+                request.environment
+            )
 
             update_environment(
                 request.session_id,
@@ -620,8 +660,11 @@ async def chat(
         # ----------------------------------------------------
 
         result = run_pipeline(
+
             profile=profile,
+
             user_question=request.question,
+
             chat_history=chat_history
         )
 
@@ -689,7 +732,6 @@ async def chat(
 
             "data_quality":
                 data_quality
-
         }
 
 
@@ -705,6 +747,7 @@ async def chat(
         print("ERROR IN /chat")
         print("=" * 60)
         print(str(e))
+        print("=" * 60)
 
         raise HTTPException(
             status_code=500,
@@ -723,12 +766,24 @@ async def startup_event():
     print("=" * 60)
     print("DARUKAA.EARTH BIODIVERSITY AI")
     print("=" * 60)
+
     print("API started successfully.")
+
+    print(
+        f"Project root: {PROJECT_ROOT}"
+    )
+
     print(
         f"Frontend directory: {FRONTEND_DIR}"
     )
+
+    print(
+        f"Frontend index: {FRONTEND_INDEX}"
+    )
+
     print(
         f"Frontend available: "
         f"{FRONTEND_INDEX.exists()}"
     )
+
     print("=" * 60)

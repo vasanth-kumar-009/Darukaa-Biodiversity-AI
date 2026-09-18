@@ -4,83 +4,140 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Darukaa.Earth</title>
+
+    <title>Darukaa.Earth - AI Biodiversity Intelligence</title>
+
     <link rel="stylesheet" href="/static/style.css">
 </head>
 
 <body>
+
     <div class="app">
-        <!-- ======================================
+
+        <!-- =====================================================
              HEADER
-        ======================================= -->
+        ====================================================== -->
+
         <header>
+
             <div>
                 <h1>🌍 Darukaa.Earth</h1>
+
                 <p>
                     AI Biodiversity Intelligence
                 </p>
             </div>
+
             <div class="status">
                 <span class="status-dot"></span>
                 System Ready
             </div>
+
         </header>
 
 
-        <!-- ======================================
+        <!-- =====================================================
              MAIN
-        ======================================= -->
+        ====================================================== -->
 
         <main>
-            <!-- ==================================
+
+            <!-- =================================================
                  ENVIRONMENT PANEL
-            =================================== -->
+            ================================================== -->
+
             <aside class="environment-panel">
+
                 <h2>Environmental Data</h2>
+
                 <p class="panel-description">
                     Provide environmental information
                     for ecosystem analysis.
                 </p>
-                <!-- SOIL -->
+
+
+                <!-- =================================================
+                     SOIL
+                ================================================== -->
+
                 <h3>Soil</h3>
+
                 <label>
                     pH
-                    <input id="ph" type="number" step="0.1" placeholder="e.g. 6.5">
+
+                    <input
+                        id="ph"
+                        type="number"
+                        step="0.1"
+                        min="0"
+                        max="14"
+                        placeholder="e.g. 6.5"
+                    >
                 </label>
+
+
                 <label>
                     Organic Carbon (%)
-                    <input id="organic_carbon" type="number" step="0.1" placeholder="e.g. 0.4">
+
+                    <input
+                        id="organic_carbon"
+                        type="number"
+                        step="0.1"
+                        min="0"
+                        max="100"
+                        placeholder="e.g. 0.4"
+                    >
                 </label>
+
 
                 <label>
                     Moisture (%)
 
-                    <input id="moisture" type="number" step="0.1" placeholder="e.g. 18">
-
+                    <input
+                        id="moisture"
+                        type="number"
+                        step="0.1"
+                        min="0"
+                        max="100"
+                        placeholder="e.g. 18"
+                    >
                 </label>
 
 
-                <!-- CLIMATE -->
+                <!-- =================================================
+                     CLIMATE
+                ================================================== -->
 
                 <h3>Climate</h3>
 
                 <label>
                     Annual Rainfall (mm)
 
-                    <input id="rainfall" type="number" placeholder="e.g. 450">
-
+                    <input
+                        id="rainfall"
+                        type="number"
+                        step="1"
+                        min="0"
+                        placeholder="e.g. 450"
+                    >
                 </label>
 
 
                 <label>
                     Temperature (°C)
 
-                    <input id="temperature" type="number" step="0.1" placeholder="e.g. 31">
-
+                    <input
+                        id="temperature"
+                        type="number"
+                        step="0.1"
+                        placeholder="e.g. 31"
+                    >
                 </label>
 
 
-                <!-- LAND -->
+                <!-- =================================================
+                     LAND
+                ================================================== -->
 
                 <h3>Land</h3>
 
@@ -121,12 +178,17 @@
                 <label>
                     Crop Type
 
-                    <input id="crop_type" type="text" placeholder="e.g. wheat monoculture">
-
+                    <input
+                        id="crop_type"
+                        type="text"
+                        placeholder="e.g. wheat_monoculture"
+                    >
                 </label>
 
 
-                <!-- BIODIVERSITY -->
+                <!-- =================================================
+                     BIODIVERSITY
+                ================================================== -->
 
                 <h3>Biodiversity</h3>
 
@@ -182,7 +244,9 @@
                 </label>
 
 
-                <!-- HUMAN IMPACT -->
+                <!-- =================================================
+                     HUMAN IMPACT
+                ================================================== -->
 
                 <h3>Human Impact</h3>
 
@@ -264,40 +328,78 @@
                 </label>
 
 
-                <button id="clearEnvironment" class="secondary-button">
+                <!-- =================================================
+                     LOCATION
+                ================================================== -->
+
+                <h3>Location</h3>
+
+                <label>
+                    Region
+
+                    <input
+                        id="region"
+                        type="text"
+                        placeholder="e.g. Punjab"
+                    >
+                </label>
+
+
+                <label>
+                    Latitude
+
+                    <input
+                        id="latitude"
+                        type="number"
+                        step="0.000001"
+                        min="-90"
+                        max="90"
+                        placeholder="e.g. 30.9010"
+                    >
+                </label>
+
+
+                <label>
+                    Longitude
+
+                    <input
+                        id="longitude"
+                        type="number"
+                        step="0.000001"
+                        min="-180"
+                        max="180"
+                        placeholder="e.g. 75.8573"
+                    >
+                </label>
+
+
+                <!-- =================================================
+                     CLEAR
+                ================================================== -->
+
+                <button
+                    id="clearEnvironment"
+                    class="secondary-button"
+                    type="button"
+                >
                     Clear Data
                 </button>
 
             </aside>
-            <!-- LOCATION -->
 
-            <h3>Location</h3>
 
-            <label>
-                Region
-
-                <input id="region" type="text" placeholder="e.g. Punjab">
-            </label>
-
-            <label>
-                Latitude
-
-                <input id="latitude" type="number" step="0.000001" min="-90" max="90" placeholder="e.g. 30.9010">
-            </label>
-
-            <label>
-                Longitude
-
-                <input id="longitude" type="number" step="0.000001" min="-180" max="180" placeholder="e.g. 75.8573">
-            </label>
-
-            <!-- ==================================
-                 CHAT
-            =================================== -->
+            <!-- =================================================
+                 CHAT PANEL
+            ================================================== -->
 
             <section class="chat-panel">
 
-                <div id="chatMessages" class="chat-messages">
+                <div
+                    id="chatMessages"
+                    class="chat-messages"
+                >
+
+                    <!-- Initial assistant message -->
 
                     <div class="message assistant">
 
@@ -315,7 +417,7 @@
                                 Hello! Provide environmental
                                 information on the left and
                                 ask me about biodiversity,
-                                soil health, habitat or
+                                soil health, habitat, or
                                 ecosystem management.
                             </p>
 
@@ -326,15 +428,29 @@
                 </div>
 
 
-                <!-- ==================================
+                <!-- =================================================
+                     ANALYSIS RESULTS
+                ================================================== -->
+
+                <div id="analysisResults"></div>
+
+
+                <!-- =================================================
                      QUESTION INPUT
-                =================================== -->
+                ================================================== -->
 
                 <div class="chat-input-area">
 
-                    <textarea id="question" placeholder="Ask about your ecosystem..." rows="2"></textarea>
+                    <textarea
+                        id="question"
+                        placeholder="Ask about your ecosystem..."
+                        rows="2"
+                    ></textarea>
 
-                    <button id="sendButton" onclick="sendMessage()">
+                    <button
+                        id="sendButton"
+                        type="button"
+                    >
                         Send
                     </button>
 
@@ -346,6 +462,10 @@
 
     </div>
 
+
+    <!-- =========================================================
+         JAVASCRIPT
+    ========================================================== -->
 
     <script src="/static/script.js"></script>
 
