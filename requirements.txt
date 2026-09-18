@@ -4,7 +4,6 @@ pydantic
 python-dotenv
 google-genai
 chromadb
-sentence-transformers
 pypdf
 requests
 httpx

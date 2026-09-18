@@ -1,9 +1,10 @@
-import sys
 from pathlib import Path
+import sys
 
-# --------------------------------------------------
+
+# ---------------------------------------------------------
 # Project root
-# --------------------------------------------------
+# ---------------------------------------------------------
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
@@ -11,180 +12,40 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 
-# --------------------------------------------------
-# Imports
-# --------------------------------------------------
+# ---------------------------------------------------------
+# Local imports
+# ---------------------------------------------------------
 
-import chromadb
-from sentence_transformers import SentenceTransformer
-
-from reasoning.environmental_reasoner import analyze_environment
-
-
-# --------------------------------------------------
-# Configuration
-# --------------------------------------------------
-
-CHROMA_DIR = PROJECT_ROOT / "data" / "chroma_db"
-
-COLLECTION_NAME = "environmental_knowledge"
-
-EMBEDDING_MODEL = "all-MiniLM-L6-v2"
-
-TOP_K = 8
-
-
-# --------------------------------------------------
-# Load embedding model
-# --------------------------------------------------
-
-print("Loading embedding model...")
-
-embedding_model = SentenceTransformer(
-    EMBEDDING_MODEL
+from reasoning.environmental_reasoner import (
+    analyze_environment
 )
 
-print("Embedding model loaded.")
+from rag.retrieve import retrieve_evidence
 
 
-# --------------------------------------------------
-# ChromaDB
-# --------------------------------------------------
-
-chroma_client = chromadb.PersistentClient(
-    path=str(CHROMA_DIR)
-)
-
-collection = chroma_client.get_collection(
-    name=COLLECTION_NAME
-)
-
-print(
-    f"Knowledge base contains "
-    f"{collection.count()} chunks."
-)
-
-
-# ==================================================
-# RAG RETRIEVAL
-# ==================================================
-
-def retrieve_evidence(
-    query,
-    top_k=TOP_K
-):
-
-    query_embedding = embedding_model.encode(
-        query
-    ).tolist()
-
-    results = collection.query(
-        query_embeddings=[query_embedding],
-        n_results=top_k
-    )
-
-    documents = results.get(
-        "documents",
-        [[]]
-    )[0]
-
-    metadatas = results.get(
-        "metadatas",
-        [[]]
-    )[0]
-
-    distances = results.get(
-        "distances",
-        [[]]
-    )[0]
-
-    evidence = []
-
-    for i, text in enumerate(documents):
-
-        metadata = (
-            metadatas[i]
-            if i < len(metadatas)
-            else {}
-        )
-
-        distance = (
-            distances[i]
-            if i < len(distances)
-            else None
-        )
-
-        evidence.append(
-            {
-                "text": text,
-
-                "source": metadata.get(
-                    "source",
-                    "Unknown"
-                ),
-
-                "category": metadata.get(
-                    "category",
-                    "Unknown"
-                ),
-
-                "page": metadata.get(
-                    "page",
-                    "Unknown"
-                ),
-
-                "distance": distance
-            }
-        )
-
-    return evidence
-
-
-# ==================================================
-# REMOVE DUPLICATE / NEAR-DUPLICATE EVIDENCE
-# ==================================================
+# ---------------------------------------------------------
+# Evidence deduplication
+# ---------------------------------------------------------
 
 def deduplicate_evidence(
     evidence,
     max_per_source=3
 ):
-
-    unique = []
-
-    seen_text = set()
+    """
+    Prevent the final evidence list from being dominated
+    by chunks from one scientific source.
+    """
 
     source_counts = {}
 
-    for item in evidence:
+    unique_evidence = []
 
-        text = item.get(
-            "text",
-            ""
-        ).strip()
+    for item in evidence:
 
         source = item.get(
             "source",
-            "Unknown"
+            "Unknown source"
         )
-
-        # ------------------------------------------
-        # Normalize text
-        # ------------------------------------------
-
-        normalized = " ".join(
-            text.lower().split()
-        )
-
-        # ------------------------------------------
-        # Exact duplicate
-        # ------------------------------------------
-
-        if normalized in seen_text:
-            continue
-
-        # ------------------------------------------
-        # Limit same source
-        # ------------------------------------------
 
         count = source_counts.get(
             source,
@@ -194,210 +55,81 @@ def deduplicate_evidence(
         if count >= max_per_source:
             continue
 
-        # ------------------------------------------
-        # Keep evidence
-        # ------------------------------------------
-
-        seen_text.add(
-            normalized
-        )
-
         source_counts[source] = count + 1
 
-        unique.append(item)
+        unique_evidence.append(item)
 
-    return unique
+    return unique_evidence
 
 
-# ==================================================
-# BUILD RAG QUERY
-# ==================================================
+# ---------------------------------------------------------
+# Build RAG query
+# ---------------------------------------------------------
 
 def build_rag_query(
     profile,
     analysis
 ):
-
-    query_parts = []
-
-    # --------------------------------------------------
-    # Soil
-    # --------------------------------------------------
+    """
+    Convert the structured environmental profile and
+    rule-based reasoning results into a scientific
+    retrieval query.
+    """
 
     soil = profile.get(
         "soil",
         {}
     )
 
-    if soil.get("ph") is not None:
-
-        query_parts.append(
-            f"soil pH {soil['ph']}"
-        )
-
-    if soil.get(
-        "organic_carbon_percent"
-    ) is not None:
-
-        query_parts.append(
-            "soil organic carbon "
-            f"{soil['organic_carbon_percent']} percent"
-        )
-
-    if soil.get(
-        "moisture_percent"
-    ) is not None:
-
-        query_parts.append(
-            "soil moisture "
-            f"{soil['moisture_percent']} percent"
-        )
-
-    # --------------------------------------------------
-    # Climate
-    # --------------------------------------------------
-
     climate = profile.get(
         "climate",
         {}
     )
-
-    if climate.get(
-        "rainfall_mm_year"
-    ) is not None:
-
-        query_parts.append(
-            "annual rainfall "
-            f"{climate['rainfall_mm_year']} mm"
-        )
-
-    if climate.get(
-        "temperature_celsius"
-    ) is not None:
-
-        query_parts.append(
-            "temperature "
-            f"{climate['temperature_celsius']} Celsius"
-        )
-
-    # --------------------------------------------------
-    # Land
-    # --------------------------------------------------
 
     land = profile.get(
         "land",
         {}
     )
 
-    if land.get("land_use"):
-
-        query_parts.append(
-            f"land use {land['land_use']}"
-        )
-
-    if land.get("crop_type"):
-
-        query_parts.append(
-            f"crop type {land['crop_type']}"
-        )
-
-    # --------------------------------------------------
-    # Biodiversity
-    # --------------------------------------------------
-
     biodiversity = profile.get(
         "biodiversity",
         {}
     )
 
-    if biodiversity.get(
-        "species_richness"
-    ):
-
-        query_parts.append(
-            "species richness "
-            f"{biodiversity['species_richness']}"
-        )
-
-    if biodiversity.get(
-        "habitat_diversity"
-    ):
-
-        query_parts.append(
-            "habitat diversity "
-            f"{biodiversity['habitat_diversity']}"
-        )
-
-    # --------------------------------------------------
-    # Human impact
-    # --------------------------------------------------
-
-    impact = profile.get(
+    human_impact = profile.get(
         "human_impact",
         {}
     )
 
-    if impact.get(
-        "pollution_level"
-    ):
-
-        query_parts.append(
-            "pollution "
-            f"{impact['pollution_level']}"
-        )
-
-    if impact.get(
-        "deforestation_level"
-    ):
-
-        query_parts.append(
-            "deforestation "
-            f"{impact['deforestation_level']}"
-        )
-
-    if impact.get(
-        "habitat_fragmentation"
-    ):
-
-        query_parts.append(
-            "habitat fragmentation "
-            f"{impact['habitat_fragmentation']}"
-        )
-
-    # --------------------------------------------------
-    # Reasoning findings
-    # --------------------------------------------------
+    location = profile.get(
+        "location",
+        {}
+    )
 
     findings = analysis.get(
         "findings",
         []
     )
 
-    for finding in findings:
-
-        if isinstance(
-            finding,
-            dict
-        ):
-
-            factor = finding.get(
-                "factor"
-            )
-
-            if factor:
-
-                query_parts.append(
-                    str(factor)
-                )
-
-    # --------------------------------------------------
-    # Interactions
-    # --------------------------------------------------
-
     interactions = analysis.get(
         "interactions",
         []
     )
+
+    # -----------------------------------------------------
+    # Convert findings
+    # -----------------------------------------------------
+
+    finding_text = " ".join(
+        str(item)
+        for item in findings
+    )
+
+    # -----------------------------------------------------
+    # Convert interactions
+    # -----------------------------------------------------
+
+    interaction_texts = []
 
     for interaction in interactions:
 
@@ -406,168 +138,213 @@ def build_rag_query(
             dict
         ):
 
-            description = (
-                interaction.get(
-                    "interaction"
-                )
-                or
-                interaction.get(
-                    "description"
+            interaction_texts.append(
+                str(
+                    interaction.get(
+                        "interaction",
+                        ""
+                    )
                 )
             )
 
-            if description:
-
-                query_parts.append(
-                    str(description)
+            interaction_texts.append(
+                str(
+                    interaction.get(
+                        "reasoning",
+                        ""
+                    )
                 )
+            )
 
-    # --------------------------------------------------
-    # Scientific concepts
-    # --------------------------------------------------
+        else:
 
-    query_parts.extend(
-        [
-            "soil biodiversity",
-            "ecosystem health",
-            "biodiversity conservation",
-            "sustainable land management",
-            "ecosystem services"
-        ]
+            interaction_texts.append(
+                str(interaction)
+            )
+
+    interaction_text = " ".join(
+        interaction_texts
     )
 
-    return " ".join(
-        query_parts
-    )
+    # -----------------------------------------------------
+    # Construct scientific query
+    # -----------------------------------------------------
+
+    query_parts = [
+
+        "biodiversity conservation",
+
+        f"soil pH {soil.get('ph')}",
+
+        (
+            "soil organic carbon "
+            f"{soil.get('organic_carbon_percent')} percent"
+        ),
+
+        (
+            "soil moisture "
+            f"{soil.get('moisture_percent')} percent"
+        ),
+
+        (
+            "annual rainfall "
+            f"{climate.get('rainfall_mm_year')} mm"
+        ),
+
+        (
+            "temperature "
+            f"{climate.get('temperature_celsius')} Celsius"
+        ),
+
+        (
+            f"land use {land.get('land_use')}"
+        ),
+
+        (
+            f"crop type {land.get('crop_type')}"
+        ),
+
+        (
+            "species richness "
+            f"{biodiversity.get('species_richness')}"
+        ),
+
+        (
+            "habitat diversity "
+            f"{biodiversity.get('habitat_diversity')}"
+        ),
+
+        (
+            "pollution "
+            f"{human_impact.get('pollution_level')}"
+        ),
+
+        (
+            "deforestation "
+            f"{human_impact.get('deforestation_level')}"
+        ),
+
+        (
+            "habitat fragmentation "
+            f"{human_impact.get('habitat_fragmentation')}"
+        ),
+
+        f"region {location.get('region')}",
+
+        finding_text,
+
+        interaction_text,
+
+        (
+            "soil health biodiversity "
+            "water availability species survival "
+            "land use habitat fragmentation "
+            "agroforestry ecosystem services"
+        )
+    ]
+
+    # Remove empty values
+
+    query_parts = [
+        str(part).strip()
+        for part in query_parts
+        if str(part).strip()
+        and str(part).strip()
+        != "None"
+    ]
+
+    return " ".join(query_parts)
 
 
-# ==================================================
-# MAIN ENVIRONMENTAL RAG
-# ==================================================
+# ---------------------------------------------------------
+# Main RAG pipeline
+# ---------------------------------------------------------
 
 def run_environmental_rag(
     profile,
-    top_k=TOP_K
+    top_k=8
 ):
+    """
+    Complete environmental RAG process:
 
-    print(
-        "\n======================================"
-    )
+    1. Analyze environmental profile
+    2. Build scientific retrieval query
+    3. Retrieve evidence from ChromaDB
+    4. Remove excessive duplicate sources
+    """
 
-    print(
-        "ENVIRONMENTAL RAG"
-    )
-
-    print(
-        "======================================"
-    )
-
-    # --------------------------------------------------
-    # 1. Reasoning
-    # --------------------------------------------------
-
-    print(
-        "\nRunning environmental reasoning..."
-    )
+    # -----------------------------------------------------
+    # Step 1: Rule-based environmental reasoning
+    # -----------------------------------------------------
 
     analysis = analyze_environment(
         profile
     )
 
-    print(
-        "Environmental reasoning completed."
-    )
-
-    # --------------------------------------------------
-    # 2. Build query
-    # --------------------------------------------------
+    # -----------------------------------------------------
+    # Step 2: Build retrieval query
+    # -----------------------------------------------------
 
     rag_query = build_rag_query(
         profile,
         analysis
     )
 
-    print(
-        "\nRAG Query:"
-    )
+    print()
+    print("=" * 60)
+    print("RAG QUERY")
+    print("=" * 60)
+    print(rag_query)
 
-    print(
-        rag_query
-    )
+    # -----------------------------------------------------
+    # Step 3: Retrieve scientific evidence
+    # -----------------------------------------------------
 
-    # --------------------------------------------------
-    # 3. Retrieve
-    # --------------------------------------------------
-
-    print(
-        f"\nRetrieving top {top_k} "
-        "scientific evidence chunks..."
-    )
-
-    raw_evidence = retrieve_evidence(
+    evidence = retrieve_evidence(
         rag_query,
         top_k=top_k
     )
 
-    print(
-        f"Raw evidence retrieved: "
-        f"{len(raw_evidence)}"
-    )
-
-    # --------------------------------------------------
-    # 4. Deduplicate
-    # --------------------------------------------------
+    # -----------------------------------------------------
+    # Step 4: Deduplicate evidence
+    # -----------------------------------------------------
 
     evidence = deduplicate_evidence(
-        raw_evidence,
+        evidence,
         max_per_source=3
     )
 
-    print(
-        f"Evidence after deduplication: "
-        f"{len(evidence)}"
-    )
+    # -----------------------------------------------------
+    # Print evidence
+    # -----------------------------------------------------
 
-    # --------------------------------------------------
-    # 5. Print evidence
-    # --------------------------------------------------
+    print()
+    print("=" * 60)
+    print("RETRIEVED SCIENTIFIC EVIDENCE")
+    print("=" * 60)
 
-    print(
-        "\n========== SCIENTIFIC EVIDENCE =========="
-    )
-
-    for i, item in enumerate(
+    for index, item in enumerate(
         evidence,
         start=1
     ):
 
+        print()
         print(
-            f"\nEvidence {i}"
+            f"[{index}] "
+            f"{item.get('source')} "
+            f"- Page {item.get('page')}"
         )
 
         print(
-            f"Source: {item['source']}"
+            item.get(
+                "text",
+                ""
+            )[:500]
         )
 
-        print(
-            f"Category: {item['category']}"
-        )
-
-        print(
-            f"Page: {item['page']}"
-        )
-
-        print(
-            f"Distance: {item['distance']}"
-        )
-
-        print(
-            f"Text: {item['text'][:300]}..."
-        )
-
-    # --------------------------------------------------
-    # 6. Return
-    # --------------------------------------------------
+    # -----------------------------------------------------
+    # Return result
+    # -----------------------------------------------------
 
     return {
         "analysis": analysis,
@@ -576,9 +353,9 @@ def run_environmental_rag(
     }
 
 
-# ==================================================
-# TEST
-# ==================================================
+# ---------------------------------------------------------
+# Test
+# ---------------------------------------------------------
 
 if __name__ == "__main__":
 
@@ -619,17 +396,16 @@ if __name__ == "__main__":
     }
 
     result = run_environmental_rag(
-        test_profile
+        test_profile,
+        top_k=8
     )
 
-    print(
-        "\n======================================"
-    )
+    print()
+    print("=" * 60)
+    print("RAG TEST COMPLETE")
+    print("=" * 60)
 
     print(
-        "RAG TEST COMPLETE"
-    )
-
-    print(
-        "======================================"
+        f"Evidence retrieved: "
+        f"{len(result['evidence'])}"
     )

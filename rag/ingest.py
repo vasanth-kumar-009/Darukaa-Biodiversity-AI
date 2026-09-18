@@ -1,293 +1,260 @@
 from pathlib import Path
-from pypdf import PdfReader
 import chromadb
-from sentence_transformers import SentenceTransformer
+from chromadb.utils.embedding_functions import DefaultEmbeddingFunction
+from pypdf import PdfReader
 
 
-# ============================================================
-# CONFIGURATION
-# ============================================================
+# ---------------------------------------------------------
+# Paths
+# ---------------------------------------------------------
 
-KNOWLEDGE_DIR = Path("knowledge_base")
-CHROMA_DIR = Path("data/chroma_db")
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
+KNOWLEDGE_DIR = PROJECT_ROOT / "knowledge_base"
+CHROMA_DIR = PROJECT_ROOT / "data" / "chroma_db"
 
 COLLECTION_NAME = "environmental_knowledge"
 
-# Number of chunks processed at once
+CHUNK_SIZE = 1000
+CHUNK_OVERLAP = 200
 BATCH_SIZE = 32
 
 
-# ============================================================
-# EMBEDDING MODEL
-# ============================================================
-
-print("Loading embedding model...")
-
-embedding_model = SentenceTransformer(
-    "all-MiniLM-L6-v2"
-)
-
-print("Embedding model loaded.")
-
-
-# ============================================================
-# CHROMADB
-# ============================================================
-
-print("Initializing ChromaDB...")
+# ---------------------------------------------------------
+# Chroma client
+# ---------------------------------------------------------
 
 client = chromadb.PersistentClient(
     path=str(CHROMA_DIR)
 )
 
-collection = client.get_or_create_collection(
-    name=COLLECTION_NAME
-)
-
-print("ChromaDB ready.")
+embedding_function = DefaultEmbeddingFunction()
 
 
-# ============================================================
-# PDF TEXT EXTRACTION
-# ============================================================
+# ---------------------------------------------------------
+# PDF extraction
+# ---------------------------------------------------------
 
-def extract_pdf_text(pdf_path):
+def extract_pdf_pages(pdf_path):
+    """
+    Extract text from every page of a PDF.
+    """
 
     reader = PdfReader(str(pdf_path))
 
     pages = []
 
-    for page_number, page in enumerate(reader.pages):
+    for page_number, page in enumerate(reader.pages, start=1):
 
-        text = page.extract_text()
+        try:
+            text = page.extract_text() or ""
+        except Exception as e:
+            print(
+                f"Warning: Could not extract page "
+                f"{page_number} from {pdf_path.name}: {e}"
+            )
+            text = ""
 
-        if text and text.strip():
+        text = text.strip()
 
+        if text:
             pages.append({
-                "page": page_number + 1,
-                "text": text.strip()
+                "page": page_number,
+                "text": text
             })
 
     return pages
 
 
-# ============================================================
-# TEXT CHUNKING
-# ============================================================
+# ---------------------------------------------------------
+# Text chunking
+# ---------------------------------------------------------
 
-def create_chunks(text, chunk_size=1000, overlap=200):
+def chunk_text(text, chunk_size=CHUNK_SIZE, overlap=CHUNK_OVERLAP):
+    """
+    Split text into overlapping chunks.
+    """
+
+    if not text:
+        return []
 
     chunks = []
 
     start = 0
+    text_length = len(text)
 
-    while start < len(text):
+    while start < text_length:
 
-        end = start + chunk_size
+        end = min(start + chunk_size, text_length)
 
         chunk = text[start:end].strip()
 
         if chunk:
-
             chunks.append(chunk)
 
-        start += chunk_size - overlap
+        if end >= text_length:
+            break
+
+        start = end - overlap
+
+        if start < 0:
+            start = 0
 
     return chunks
 
 
-# ============================================================
-# PROCESS PDF
-# ============================================================
+# ---------------------------------------------------------
+# Build documents
+# ---------------------------------------------------------
 
-def process_pdf(pdf_path):
+def build_documents():
 
-    print()
-    print("=" * 60)
-    print(f"Processing: {pdf_path}")
-    print("=" * 60)
+    documents = []
+    metadatas = []
+    ids = []
 
-    pages = extract_pdf_text(pdf_path)
+    pdf_files = list(KNOWLEDGE_DIR.rglob("*.pdf"))
 
-    print(f"Extracted {len(pages)} pages.")
-
-    all_chunks = []
-
-    for page in pages:
-
-        chunks = create_chunks(page["text"])
-
-        for chunk in chunks:
-
-            all_chunks.append({
-                "text": chunk,
-                "page": page["page"]
-            })
-
-    print(f"Created {len(all_chunks)} chunks.")
-
-    return all_chunks
-
-
-# ============================================================
-# BATCH INSERT
-# ============================================================
-
-def add_chunks_to_chromadb(chunks, pdf_path, start_id):
-
-    total = len(chunks)
-
-    for start in range(0, total, BATCH_SIZE):
-
-        end = min(start + BATCH_SIZE, total)
-
-        batch = chunks[start:end]
-
-        texts = [
-            item["text"]
-            for item in batch
-        ]
-
-        # ----------------------------------------------------
-        # Create embeddings for the entire batch
-        # ----------------------------------------------------
-
-        embeddings = embedding_model.encode(
-            texts,
-            batch_size=BATCH_SIZE,
-            show_progress_bar=False
-        ).tolist()
-
-        # ----------------------------------------------------
-        # IDs
-        # ----------------------------------------------------
-
-        ids = [
-            f"doc_{start_id + i}"
-            for i in range(len(batch))
-        ]
-
-        # ----------------------------------------------------
-        # Metadata
-        # ----------------------------------------------------
-
-        metadatas = []
-
-        for item in batch:
-
-            metadatas.append({
-                "source": pdf_path.name,
-                "category": pdf_path.parent.name,
-                "page": item["page"]
-            })
-
-        # ----------------------------------------------------
-        # Add batch to ChromaDB
-        # ----------------------------------------------------
-
-        collection.add(
-            ids=ids,
-            documents=texts,
-            embeddings=embeddings,
-            metadatas=metadatas
-        )
-
-        print(
-            f"Added {end}/{total} chunks "
-            f"from {pdf_path.name}"
-        )
-
-
-# ============================================================
-# MAIN
-# ============================================================
-
-def main():
-
-    print()
-    print("=" * 60)
-    print("DARUKAA BIODIVERSITY AI")
-    print("Knowledge Base Ingestion")
-    print("=" * 60)
-
-    pdf_files = list(
-        KNOWLEDGE_DIR.rglob("*.pdf")
-    )
-
-    print()
     print(f"Found {len(pdf_files)} PDF files.")
-
-    if not pdf_files:
-
-        print()
-        print("ERROR: No PDF files found.")
-        print("Put your PDFs inside the knowledge_base folder.")
-        return
-
-    # --------------------------------------------------------
-    # IMPORTANT:
-    # Start fresh every time we run ingestion.
-    # --------------------------------------------------------
-
-    try:
-
-        client.delete_collection(
-            name=COLLECTION_NAME
-        )
-
-        print("Old collection deleted.")
-
-    except Exception:
-
-        print("No previous collection found.")
-
-    collection = client.get_or_create_collection(
-        name=COLLECTION_NAME
-    )
-
-    # Make collection globally available
-    globals()["collection"] = collection
-
-    # --------------------------------------------------------
-    # Process every PDF
-    # --------------------------------------------------------
 
     document_id = 0
 
     for pdf_path in pdf_files:
 
-        chunks = process_pdf(pdf_path)
+        print(f"Processing: {pdf_path}")
 
-        add_chunks_to_chromadb(
-            chunks,
-            pdf_path,
-            document_id
+        pages = extract_pdf_pages(pdf_path)
+
+        for page_data in pages:
+
+            page_number = page_data["page"]
+            text = page_data["text"]
+
+            chunks = chunk_text(text)
+
+            for chunk_number, chunk in enumerate(chunks):
+
+                document_id += 1
+
+                doc_id = (
+                    f"{pdf_path.stem}"
+                    f"_page_{page_number}"
+                    f"_chunk_{chunk_number}"
+                )
+
+                documents.append(chunk)
+
+                metadatas.append({
+                    "source": pdf_path.name,
+                    "source_path": str(
+                        pdf_path.relative_to(PROJECT_ROOT)
+                    ),
+                    "page": page_number,
+                    "chunk": chunk_number
+                })
+
+                ids.append(doc_id)
+
+    return documents, metadatas, ids
+
+
+# ---------------------------------------------------------
+# Main ingestion
+# ---------------------------------------------------------
+
+def ingest():
+
+    print("=" * 60)
+    print("DARUKAA.EARTH - KNOWLEDGE BASE INGESTION")
+    print("=" * 60)
+
+    CHROMA_DIR.mkdir(
+        parents=True,
+        exist_ok=True
+    )
+
+    # -----------------------------------------------------
+    # Delete existing collection
+    # -----------------------------------------------------
+
+    try:
+        client.delete_collection(
+            name=COLLECTION_NAME
         )
 
-        document_id += len(chunks)
+        print("Existing collection deleted.")
 
-    # --------------------------------------------------------
-    # Finished
-    # --------------------------------------------------------
+    except Exception:
+        print("No existing collection found.")
+
+    # -----------------------------------------------------
+    # Create collection
+    # -----------------------------------------------------
+
+    collection = client.create_collection(
+        name=COLLECTION_NAME,
+        embedding_function=embedding_function,
+        metadata={
+            "description": (
+                "Scientific biodiversity and "
+                "environmental knowledge"
+            )
+        }
+    )
+
+    # -----------------------------------------------------
+    # Build documents
+    # -----------------------------------------------------
+
+    documents, metadatas, ids = build_documents()
+
+    print(f"Total chunks created: {len(documents)}")
+
+    # -----------------------------------------------------
+    # Add documents in batches
+    # -----------------------------------------------------
+
+    for start in range(
+        0,
+        len(documents),
+        BATCH_SIZE
+    ):
+
+        end = min(
+            start + BATCH_SIZE,
+            len(documents)
+        )
+
+        batch_documents = documents[start:end]
+        batch_metadatas = metadatas[start:end]
+        batch_ids = ids[start:end]
+
+        collection.add(
+            documents=batch_documents,
+            metadatas=batch_metadatas,
+            ids=batch_ids
+        )
+
+        print(
+            f"Added chunks "
+            f"{start + 1}-{end} "
+            f"of {len(documents)}"
+        )
+
+    # -----------------------------------------------------
+    # Verify
+    # -----------------------------------------------------
+
+    total = collection.count()
 
     print()
     print("=" * 60)
-    print("KNOWLEDGE BASE CREATED SUCCESSFULLY")
+    print("INGESTION COMPLETE")
     print("=" * 60)
+    print(f"Collection : {COLLECTION_NAME}")
+    print(f"Total chunks: {total}")
+    print(f"Database   : {CHROMA_DIR}")
 
-    print(
-        f"Total chunks stored: {collection.count()}"
-    )
-
-    print(
-        f"Database location: {CHROMA_DIR}"
-    )
-
-
-# ============================================================
-# RUN
-# ============================================================
 
 if __name__ == "__main__":
-
-    main()
+    ingest()

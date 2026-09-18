@@ -1,126 +1,146 @@
 from pathlib import Path
 
 import chromadb
-from sentence_transformers import SentenceTransformer
+from chromadb.utils.embedding_functions import DefaultEmbeddingFunction
 
 
-# ============================================================
-# CONFIGURATION
-# ============================================================
+# ---------------------------------------------------------
+# Paths
+# ---------------------------------------------------------
 
-CHROMA_DIR = Path("data/chroma_db")
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
+CHROMA_DIR = PROJECT_ROOT / "data" / "chroma_db"
 
 COLLECTION_NAME = "environmental_knowledge"
 
 
-# ============================================================
-# LOAD EMBEDDING MODEL
-# ============================================================
-
-print("Loading embedding model...")
-
-embedding_model = SentenceTransformer(
-    "all-MiniLM-L6-v2"
-)
-
-print("Embedding model loaded.")
-
-
-# ============================================================
-# CONNECT TO CHROMADB
-# ============================================================
+# ---------------------------------------------------------
+# Chroma client
+# ---------------------------------------------------------
 
 client = chromadb.PersistentClient(
     path=str(CHROMA_DIR)
 )
 
-collection = client.get_collection(
-    name=COLLECTION_NAME
-)
-
-print(
-    f"Knowledge base contains {collection.count()} chunks."
-)
+embedding_function = DefaultEmbeddingFunction()
 
 
-# ============================================================
-# SEARCH KNOWLEDGE BASE
-# ============================================================
+# ---------------------------------------------------------
+# Collection
+# ---------------------------------------------------------
 
-def search_knowledge(query, top_k=5):
+def get_collection():
 
-    # Create embedding for user question
-    query_embedding = embedding_model.encode(
-        query
-    ).tolist()
+    try:
 
-    # Search ChromaDB
+        collection = client.get_collection(
+            name=COLLECTION_NAME,
+            embedding_function=embedding_function
+        )
+
+        return collection
+
+    except Exception as e:
+
+        raise RuntimeError(
+            "Knowledge base collection was not found. "
+            "Run 'python rag/ingest.py' first."
+        ) from e
+
+
+# ---------------------------------------------------------
+# Retrieve evidence
+# ---------------------------------------------------------
+
+def retrieve_evidence(
+    query,
+    top_k=8
+):
+    """
+    Retrieve the most relevant scientific knowledge
+    from ChromaDB using semantic similarity.
+    """
+
+    if not query or not query.strip():
+        return []
+
+    collection = get_collection()
+
     results = collection.query(
-        query_embeddings=[query_embedding],
+        query_texts=[query],
         n_results=top_k
     )
 
-    return results
+    documents = results.get("documents", [[]])[0]
+    metadatas = results.get("metadatas", [[]])[0]
+    distances = results.get("distances", [[]])[0]
+
+    evidence = []
+
+    for index, document in enumerate(documents):
+
+        metadata = (
+            metadatas[index]
+            if index < len(metadatas)
+            else {}
+        )
+
+        distance = (
+            distances[index]
+            if index < len(distances)
+            else None
+        )
+
+        evidence.append({
+            "text": document,
+            "source": metadata.get(
+                "source",
+                "Unknown source"
+            ),
+            "page": metadata.get(
+                "page",
+                "Unknown"
+            ),
+            "chunk": metadata.get(
+                "chunk",
+                "Unknown"
+            ),
+            "distance": distance
+        })
+
+    return evidence
 
 
-# ============================================================
-# DISPLAY RESULTS
-# ============================================================
+# ---------------------------------------------------------
+# Simple test
+# ---------------------------------------------------------
 
-def display_results(query, results):
+if __name__ == "__main__":
+
+    query = (
+        "How does soil organic carbon "
+        "affect biodiversity and soil health?"
+    )
+
+    results = retrieve_evidence(
+        query,
+        top_k=5
+    )
 
     print()
-    print("=" * 70)
-    print("USER QUERY")
-    print("=" * 70)
+    print("=" * 60)
+    print("RETRIEVAL TEST")
+    print("=" * 60)
 
-    print(query)
-
-    print()
-    print("=" * 70)
-    print("RETRIEVED SCIENTIFIC EVIDENCE")
-    print("=" * 70)
-
-    documents = results["documents"][0]
-
-    metadatas = results["metadatas"][0]
-
-    distances = results["distances"][0]
-
-    for i, (document, metadata, distance) in enumerate(
-        zip(documents, metadatas, distances),
+    for index, item in enumerate(
+        results,
         start=1
     ):
 
         print()
-        print(f"RESULT {i}")
-        print("-" * 70)
-
-        print("Source:", metadata["source"])
-        print("Category:", metadata["category"])
-        print("Page:", metadata["page"])
-        print("Distance:", round(distance, 4))
-
-        print()
-        print(document)
-
-
-# ============================================================
-# TEST
-# ============================================================
-
-if __name__ == "__main__":
-
-    question = input(
-        "\nEnter your environmental question: "
-    )
-
-    results = search_knowledge(
-        question,
-        top_k=5
-    )
-
-    display_results(
-        question,
-        results
-    )
+        print(f"Result {index}")
+        print(f"Source   : {item['source']}")
+        print(f"Page     : {item['page']}")
+        print(f"Distance : {item['distance']}")
+        print(f"Text     : {item['text'][:500]}...")
