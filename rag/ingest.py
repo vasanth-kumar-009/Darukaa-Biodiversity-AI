@@ -28,6 +28,7 @@ client = chromadb.PersistentClient(
     path=str(CHROMA_DIR)
 )
 
+
 embedding_function = DefaultEmbeddingFunction()
 
 
