@@ -1,15 +1,14 @@
 """
 Gemini LLM Generator for Biodiversity AI
 
-Combines:
-- Environmental profile
-- Rule-based reasoning
-- Scientific RAG evidence
-- Structured environmental knowledge
-- GBIF biodiversity observations
-- Conversation history
-
-Returns a structured JSON biodiversity response.
+Optimized for deployment:
+- smaller prompts
+- limited GBIF information
+- limited evidence size
+- short conversation history
+- Gemini timeout
+- limited retries
+- fallback response
 """
 
 import os
@@ -18,111 +17,154 @@ import re
 import time
 
 from dotenv import load_dotenv
+
 from google import genai
+
 from google.genai import types
 
 
-# ==========================================================
+# ============================================================
 # CONFIGURATION
-# ==========================================================
+# ============================================================
 
 load_dotenv()
 
-API_KEY = os.getenv("GEMINI_API_KEY")
+API_KEY = os.getenv(
+    "GEMINI_API_KEY"
+)
 
 if not API_KEY:
+
     raise ValueError(
-        "GEMINI_API_KEY not found. "
-        "Please add GEMINI_API_KEY to your .env file."
+        "GEMINI_API_KEY not found."
     )
 
 
 client = genai.Client(
-    api_key=API_KEY
+
+    api_key=API_KEY,
+
+    http_options=types.HttpOptions(
+        timeout=45000
+    )
 )
+
 
 MODEL_NAME = "gemini-3.5-flash"
 
 
+# ============================================================
+# GEMINI REQUEST
+# ============================================================
 
-# ==========================================================
-# GEMINI API CALL
-# ==========================================================
 
-def ask_gemini(prompt, max_retries=3):
-    """
-    Send a prompt to Gemini and return the generated text.
-    """
+def ask_gemini(
+    prompt,
+    max_retries=2
+):
 
-    for attempt in range(max_retries):
+    for attempt in range(
+        max_retries
+    ):
 
         try:
 
-            response = client.models.generate_content(
-                model=MODEL_NAME,
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    temperature=0.2,
-                    response_mime_type="application/json",
-                    automatic_function_calling=types.AutomaticFunctionCallingConfig(
-                        disable=True
+            response = (
+                client.models.generate_content(
+
+                    model=MODEL_NAME,
+
+                    contents=prompt,
+
+                    config=types.GenerateContentConfig(
+
+                        temperature=0.2,
+
+                        max_output_tokens=1800,
+
+                        response_mime_type=(
+                            "application/json"
+                        ),
+
+                        automatic_function_calling=(
+                            types.AutomaticFunctionCallingConfig(
+                                disable=True
+                            )
+                        )
                     )
                 )
             )
 
             return response.text
 
-        except Exception as e:
+        except Exception as exc:
 
-            error_text = str(e)
-
-            retryable_errors = [
-                "503",
-                "UNAVAILABLE",
-                "429",
-                "RESOURCE_EXHAUSTED",
-                "timeout",
-                "timed out"
-            ]
-
-            is_retryable = any(
-                error in error_text
-                for error in retryable_errors
+            error_text = str(
+                exc
             )
 
-            if is_retryable and attempt < max_retries - 1:
+            retryable_errors = [
+
+                "503",
+
+                "UNAVAILABLE",
+
+                "429",
+
+                "RESOURCE_EXHAUSTED",
+
+                "timeout",
+
+                "timed out",
+            ]
+
+            retryable = any(
+
+                error in error_text
+
+                for error in
+                retryable_errors
+            )
+
+            if (
+                retryable
+                and
+                attempt < max_retries - 1
+            ):
 
                 wait_time = 2 ** attempt
 
                 print(
-                    f"Gemini temporarily unavailable. "
-                    f"Retrying in {wait_time} seconds..."
+                    "Gemini temporarily unavailable."
+                    f" Retrying in {wait_time}s..."
                 )
 
-                time.sleep(wait_time)
+                time.sleep(
+                    wait_time
+                )
 
             else:
 
                 raise
 
 
-# ==========================================================
+# ============================================================
 # JSON EXTRACTION
-# ==========================================================
+# ============================================================
 
-def extract_json(text):
-    """
-    Extract JSON object from Gemini output.
-    """
+
+def extract_json(
+    text
+):
 
     if not text:
+
         raise ValueError(
             "Gemini returned an empty response."
         )
 
     text = text.strip()
 
-    # Remove markdown code fences
     text = re.sub(
         r"^```json\s*",
         "",
@@ -144,52 +186,64 @@ def extract_json(text):
 
     text = text.strip()
 
-    # Direct JSON
     try:
 
-        return json.loads(text)
+        return json.loads(
+            text
+        )
 
     except json.JSONDecodeError:
+
         pass
 
-    # Find first JSON object
-    start = text.find("{")
-    end = text.rfind("}")
+    start = text.find(
+        "{"
+    )
 
-    if start != -1 and end != -1:
+    end = text.rfind(
+        "}"
+    )
 
-        json_text = text[start:end + 1]
+    if (
+        start != -1
+        and
+        end != -1
+    ):
 
-        try:
+        json_text = text[
+            start:end + 1
+        ]
 
-            return json.loads(json_text)
-
-        except json.JSONDecodeError as e:
-
-            raise ValueError(
-                f"Could not parse Gemini JSON response: {e}"
-            )
+        return json.loads(
+            json_text
+        )
 
     raise ValueError(
-        "No valid JSON object found in Gemini response."
+        "No valid JSON object found."
     )
 
 
-# ==========================================================
-# FORMAT RAG EVIDENCE
-# ==========================================================
+# ============================================================
+# RAG EVIDENCE
+# ============================================================
 
-def format_evidence(evidence):
-    """
-    Convert retrieved RAG evidence into readable prompt text.
-    """
+
+def format_evidence(
+    evidence
+):
 
     if not evidence:
-        return "No scientific evidence was retrieved."
+
+        return (
+            "No scientific evidence was retrieved."
+        )
 
     formatted = []
 
-    for i, item in enumerate(evidence, start=1):
+    for i, item in enumerate(
+        evidence[:5],
+        start=1
+    ):
 
         source = item.get(
             "source",
@@ -209,7 +263,12 @@ def format_evidence(evidence):
             )
         )
 
+        text = str(
+            text
+        )[:900]
+
         formatted.append(
+
             f"""
 Evidence {i}
 Source: {source}
@@ -219,26 +278,34 @@ Content:
 """
         )
 
-    return "\n".join(formatted)
+    return "\n".join(
+        formatted
+    )
 
 
-# ==========================================================
-# FORMAT CONVERSATION HISTORY
-# ==========================================================
+# ============================================================
+# CHAT HISTORY
+# ============================================================
 
-def format_chat_history_for_prompt(chat_history):
-    """
-    Convert conversation history into prompt text.
-    """
+
+def format_chat_history_for_prompt(
+    chat_history
+):
 
     if not chat_history:
-        return "No previous conversation."
+
+        return (
+            "No previous conversation."
+        )
 
     lines = []
 
-    for message in chat_history[-10:]:
+    for message in chat_history[-6:]:
 
-        if isinstance(message, dict):
+        if isinstance(
+            message,
+            dict
+        ):
 
             role = message.get(
                 "role",
@@ -260,233 +327,370 @@ def format_chat_history_for_prompt(chat_history):
                 str(message)
             )
 
-    return "\n".join(lines)
+    return "\n".join(
+        lines
+    )
 
 
-# ==========================================================
-# MAIN BIODIVERSITY RESPONSE GENERATOR
-# ==========================================================
+# ============================================================
+# GBIF SUMMARY
+# ============================================================
 
-def generate_biodiversity_response(
-    profile,
+
+def summarize_gbif_data(
+    gbif_data
+):
+
+    if not gbif_data:
+
+        return {
+            "available": False
+        }
+
+    return {
+
+        "available":
+            gbif_data.get(
+                "available",
+                False
+            ),
+
+        "source":
+            gbif_data.get(
+                "source",
+                "GBIF"
+            ),
+
+        "latitude":
+            gbif_data.get(
+                "latitude"
+            ),
+
+        "longitude":
+            gbif_data.get(
+                "longitude"
+            ),
+
+        "radius_km":
+            gbif_data.get(
+                "radius_km"
+            ),
+
+        "record_count":
+            gbif_data.get(
+                "record_count",
+                0
+            ),
+
+        "returned_records":
+            gbif_data.get(
+                "returned_records",
+                0
+            ),
+
+        "observed_taxa_count":
+            gbif_data.get(
+                "observed_taxa_count",
+                0
+            ),
+
+        "observed_taxa":
+            gbif_data.get(
+                "observed_taxa",
+                []
+            )[:12]
+    }
+
+
+# ============================================================
+# FALLBACK
+# ============================================================
+
+
+def build_fallback_response(
     analysis,
     evidence,
-    user_question=None,
-    chat_history=None,
-    gbif_data=None,
-    knowledge_context=None
+    error_message
 ):
-    """
-    Generate an evidence-backed biodiversity response.
 
-    Parameters
-    ----------
-    profile : dict
-        Structured environmental information.
+    interactions = []
 
-    analysis : dict
-        Rule-based environmental analysis.
+    for item in analysis.get(
+        "interactions",
+        []
+    ):
 
-    evidence : list
-        Scientific evidence retrieved by RAG.
+        if isinstance(
+            item,
+            dict
+        ):
 
-    user_question : str, optional
-        User's natural-language question.
+            interactions.append({
 
-    chat_history : list, optional
-        Previous conversation.
+                "interaction":
+                    ", ".join(
+                        item.get(
+                            "variables",
+                            []
+                        )
+                    ),
 
-    gbif_data : dict, optional
-        Location-based biodiversity observations.
+                "reasoning":
+                    item.get(
+                        "reasoning",
+                        ""
+                    )
+            })
 
-    knowledge_context : dict, optional
-        Structured environmental dataset matches.
+    recommendations = []
 
-    Returns
-    -------
-    dict
-        Structured biodiversity response.
-    """
+    for item in analysis.get(
+        "recommendations",
+        []
+    ):
 
-    # ------------------------------------------------------
-    # Prepare data
-    # ------------------------------------------------------
+        recommendations.append({
+
+            "action":
+                item,
+
+            "why_it_works":
+                (
+                    "This recommendation is based "
+                    "on the environmental reasoning layer "
+                    "and the retrieved scientific evidence."
+                ),
+
+            "impacted_metrics":
+                analysis.get(
+                    "impacted_metrics",
+                    []
+                ),
+
+            "time_horizon":
+                "Context dependent",
+
+            "confidence":
+                "Moderate"
+        })
+
+    scientific_evidence = []
+
+    for item in evidence[:3]:
+
+        scientific_evidence.append({
+
+            "source":
+                item.get(
+                    "source",
+                    "Unknown"
+                ),
+
+            "page":
+                item.get(
+                    "page",
+                    "Unknown"
+                ),
+
+            "evidence":
+                str(
+                    item.get(
+                        "text",
+                        ""
+                    )
+                )[:900]
+        })
+
+    return {
+
+        "assessment":
+            analysis.get(
+                "overall_assessment",
+                "Environmental assessment completed."
+            ),
+
+        "key_interactions":
+            interactions,
+
+        "recommendations":
+            recommendations,
+
+        "scientific_evidence":
+            scientific_evidence,
+
+        "data_limitations": [
+
+            "Gemini was unavailable for this request.",
+
+            str(
+                error_message
+            )
+        ]
+    }
+
+
+# ============================================================
+# MAIN RESPONSE GENERATOR
+# ============================================================
+
+
+def generate_biodiversity_response(
+
+    profile,
+
+    analysis,
+
+    evidence,
+
+    user_question=None,
+
+    chat_history=None,
+
+    gbif_data=None,
+
+    knowledge_context=None
+
+):
 
     profile_text = json.dumps(
+
         profile,
+
         indent=2,
+
         ensure_ascii=False
     )
 
     analysis_text = json.dumps(
+
         analysis,
+
         indent=2,
+
         ensure_ascii=False
     )
 
-    evidence_text = format_evidence(
-        evidence
+    evidence_text = (
+        format_evidence(
+            evidence
+        )
     )
 
-    history_text = format_chat_history_for_prompt(
-        chat_history
+    history_text = (
+        format_chat_history_for_prompt(
+            chat_history
+        )
+    )
+
+    gbif_summary = (
+        summarize_gbif_data(
+            gbif_data
+        )
     )
 
     gbif_text = json.dumps(
-        gbif_data or {},
+
+        gbif_summary,
+
         indent=2,
+
         ensure_ascii=False
     )
 
     knowledge_text = json.dumps(
+
         knowledge_context or {},
+
         indent=2,
+
         ensure_ascii=False
     )
 
     question_text = (
+
         user_question
+
         if user_question
-        else "Provide an environmental biodiversity assessment."
+
+        else
+        "Provide an environmental biodiversity assessment."
     )
 
-    # ------------------------------------------------------
-    # Prompt
-    # ------------------------------------------------------
+    # ========================================================
+    # PROMPT
+    # ========================================================
 
     prompt = f"""
 You are an AI Biodiversity Intelligence Assistant.
 
-Your task is to analyze environmental conditions and provide
+Analyze the supplied environmental profile and provide
 scientifically grounded biodiversity recommendations.
 
-You MUST reason across multiple environmental variables.
-
-============================================================
 USER QUESTION
-============================================================
-
 {question_text}
 
-
-============================================================
 STRUCTURED ENVIRONMENTAL PROFILE
-============================================================
-
 {profile_text}
 
-
-============================================================
 RULE-BASED ENVIRONMENTAL ANALYSIS
-============================================================
-
 {analysis_text}
 
-
-============================================================
 SCIENTIFIC RAG EVIDENCE
-============================================================
-
 {evidence_text}
 
-
-============================================================
 STRUCTURED ENVIRONMENTAL KNOWLEDGE
-============================================================
-
 {knowledge_text}
 
-Use this structured dataset as contextual evidence.
-
-IMPORTANT:
-The structured environmental dataset contains demonstration/
-reference records. Do NOT treat it as a complete representation
-of real-world environmental conditions.
-
-Do not invent measurements that are not present.
-
-
-============================================================
-GBIF LOCATION BIODIVERSITY DATA
-============================================================
-
+GBIF LOCATION BIODIVERSITY SUMMARY
 {gbif_text}
 
-IMPORTANT:
-GBIF occurrence records represent observations available in
-GBIF. They are NOT a complete measurement of true species
-richness.
-
-Do NOT claim that the observed taxa count equals the total
-number of species present.
-
-Missing GBIF records must NOT be interpreted as species absence.
-
-
-============================================================
 CONVERSATION HISTORY
-============================================================
-
 {history_text}
 
+REQUIREMENTS
 
-============================================================
-REASONING REQUIREMENTS
-============================================================
+1. Analyze the supplied environmental conditions.
 
-1. Analyze the environmental profile.
+2. Identify the most important environmental pressures.
 
-2. Identify important environmental problems.
-
-3. Connect at least THREE environmental variables whenever
+3. Connect at least THREE environmental variables when
    the available data supports this.
-
-Examples:
-
-- Soil organic carbon + soil moisture + rainfall
-- Land use + biodiversity + habitat fragmentation
-- Rainfall + crop type + species richness
-- Soil condition + climate + habitat diversity
 
 4. Explain cause-and-effect relationships carefully.
 
-5. Generate practical biodiversity interventions.
+5. Provide practical biodiversity interventions.
 
-6. Every recommendation should explain:
+6. Each recommendation must contain:
+   - action
+   - why it works
+   - impacted metrics
+   - time horizon
+   - confidence
 
-   - What to do
-   - Why it works
-   - Which environmental metrics are affected
-   - Expected time horizon
+7. Ground recommendations in the supplied scientific
+   evidence whenever possible.
 
-7. Recommendations must be connected to the supplied
-   scientific evidence whenever possible.
+8. Never invent papers, authors, statistics, measurements,
+   or citations.
 
-8. Do NOT invent scientific papers, authors, statistics,
-   measurements, or citations.
+9. Do not invent precise intervention impact numbers.
 
-9. If the supplied evidence does not support a precise
-   numerical improvement estimate, do not invent one.
+10. Clearly state important data limitations.
 
-10. Clearly mention important data limitations.
+11. GBIF observations are supporting biodiversity context,
+    not complete species richness.
 
-11. Use GBIF observations only as supporting biodiversity
-    context.
+12. Missing GBIF observations must not be interpreted as
+    absence of species.
 
-12. If the user's question is unclear or important environmental
-    information is missing, mention what clarification would
-    improve the assessment.
+13. The structured dataset contains demonstration/reference
+    records. Do not present it as complete real-world data.
 
-13. Do not claim certainty when the available data is limited.
-
-
-============================================================
-OUTPUT FORMAT
-============================================================
+14. Be concise enough for a web application.
 
 Return ONLY valid JSON.
 
-Use exactly this structure:
+Use exactly:
 
 {{
     "assessment": "",
@@ -518,37 +722,38 @@ Use exactly this structure:
 
     "data_limitations": []
 }}
-
-============================================================
-QUALITY REQUIREMENTS
-============================================================
-
-The answer should be:
-
-- scientifically grounded
-- environmentally meaningful
-- based on the supplied data
-- multi-metric
-- actionable
-- transparent about uncertainty
-- concise but sufficiently detailed
-
-Do not return Markdown.
-Do not return explanations outside the JSON.
 """
 
+    # ========================================================
+    # GEMINI CALL
+    # ========================================================
 
-    # ------------------------------------------------------
-    # Call Gemini
-    # ------------------------------------------------------
+    try:
 
-    raw_response = ask_gemini(
-        prompt
-    )
+        raw_response = ask_gemini(
+            prompt,
+            max_retries=2
+        )
 
-    # ------------------------------------------------------
-    # Parse JSON
-    # ------------------------------------------------------
+    except Exception as exc:
+
+        print(
+            "Gemini unavailable:",
+            repr(exc)
+        )
+
+        return build_fallback_response(
+
+            analysis,
+
+            evidence,
+
+            exc
+        )
+
+    # ========================================================
+    # PARSE JSON
+    # ========================================================
 
     try:
 
@@ -556,26 +761,39 @@ Do not return explanations outside the JSON.
             raw_response
         )
 
-    except Exception as e:
+    except Exception as exc:
 
         print(
             "Gemini JSON parsing failed:",
-            str(e)
+            repr(exc)
         )
 
         return {
-            "assessment": raw_response,
-            "key_interactions": [],
-            "recommendations": [],
-            "scientific_evidence": [],
+
+            "assessment":
+                raw_response,
+
+            "key_interactions":
+                [],
+
+            "recommendations":
+                [],
+
+            "scientific_evidence":
+                [],
+
             "data_limitations": [
-                "The generated response could not be parsed into the expected JSON structure."
+
+                "Gemini returned a response that "
+                "could not be parsed as structured JSON.",
+
+                str(exc)
             ]
         }
 
-    # ------------------------------------------------------
-    # Ensure required fields exist
-    # ------------------------------------------------------
+    # ========================================================
+    # ENSURE REQUIRED FIELDS
+    # ========================================================
 
     result.setdefault(
         "assessment",
@@ -605,122 +823,13 @@ Do not return explanations outside the JSON.
     return result
 
 
-# ==========================================================
+# ============================================================
 # TEST
-# ==========================================================
+# ============================================================
+
 
 if __name__ == "__main__":
 
-    test_profile = {
-        "soil": {
-            "ph": 6.5,
-            "organic_carbon_percent": 0.3,
-            "moisture_percent": 15
-        },
-
-        "climate": {
-            "rainfall_mm_year": 450,
-            "temperature_celsius": 31
-        },
-
-        "land": {
-            "land_use": "cropland",
-            "crop_type": "wheat_monoculture"
-        },
-
-        "biodiversity": {
-            "species_richness": "low",
-            "habitat_diversity": "low"
-        },
-
-        "human_impact": {
-            "pollution_level": "moderate",
-            "deforestation_level": "low",
-            "habitat_fragmentation": "moderate"
-        },
-
-        "location": {
-            "latitude": 30.9010,
-            "longitude": 75.8573,
-            "region": "Punjab"
-        }
-    }
-
-    test_analysis = {
-        "findings": [
-            "Low soil organic carbon",
-            "Low soil moisture",
-            "Low biodiversity"
-        ],
-
-        "interactions": [
-            {
-                "variables": [
-                    "soil organic carbon",
-                    "rainfall",
-                    "soil moisture"
-                ],
-                "reasoning": (
-                    "Low organic carbon and limited rainfall "
-                    "can reduce soil water retention."
-                )
-            }
-        ],
-
-        "recommendations": [
-            "Increase organic matter",
-            "Improve habitat diversity"
-        ]
-    }
-
-    test_evidence = [
-        {
-            "source": "FAO Soil Biodiversity",
-            "page": "1",
-            "text": (
-                "Soil organisms contribute to soil health "
-                "and ecosystem functions."
-            )
-        }
-    ]
-
-    test_knowledge = {
-        "matching_region_sites": [],
-        "matching_biodiversity_sites": [],
-        "similar_environments": []
-    }
-
-    test_gbif = {
-        "available": True,
-        "record_count": 10,
-        "returned_records": 10,
-        "observed_taxa_count": 5,
-        "observed_taxa": [
-            "Example species"
-        ]
-    }
-
-    result = generate_biodiversity_response(
-        profile=test_profile,
-        analysis=test_analysis,
-        evidence=test_evidence,
-        user_question=(
-            "How can biodiversity be improved "
-            "in this environment?"
-        ),
-        chat_history=[],
-        gbif_data=test_gbif,
-        knowledge_context=test_knowledge
-    )
-
-    print("\n" + "=" * 60)
-    print("GEMINI RESPONSE")
-    print("=" * 60)
-
     print(
-        json.dumps(
-            result,
-            indent=2,
-            ensure_ascii=False
-        )
+        "Run this module through the main pipeline."
     )

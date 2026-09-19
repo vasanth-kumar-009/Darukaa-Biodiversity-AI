@@ -8,12 +8,14 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from backend.validation import validate_environment
+
 from backend.memory import (
     get_conversation,
     update_environment,
     add_message,
     format_chat_history,
 )
+
 from backend.biodiversity_pipeline import run_pipeline
 
 
@@ -232,11 +234,9 @@ def validate_profile(
 
     try:
 
-        result = validate_environment(
+        return validate_environment(
             profile
         )
-
-        return result
 
     except Exception as exc:
 
@@ -259,16 +259,7 @@ def validate_profile(
     "/",
     include_in_schema=False,
 )
-async def root():
-
-    """
-    Serve the frontend application.
-
-    On Vercel, this allows:
-        https://your-domain.vercel.app/
-
-    to directly display frontend/index.html.
-    """
+def root():
 
     if FRONTEND_INDEX.exists():
 
@@ -290,7 +281,7 @@ async def root():
 
 
 @app.get("/health")
-async def health():
+def health():
 
     return {
         "status": "healthy",
@@ -305,7 +296,7 @@ async def health():
 
 
 @app.get("/info")
-async def info():
+def info():
 
     return {
 
@@ -316,34 +307,21 @@ async def info():
         ),
 
         "components": [
-
             "Environmental validation",
-
             "Environmental reasoning",
-
             "Scientific RAG",
-
             "Structured environmental knowledge",
-
             "GBIF biodiversity observations",
-
             "Gemini AI",
-
             "Conversational memory",
         ],
 
         "input_variables": [
-
             "soil",
-
             "climate",
-
             "land",
-
             "biodiversity",
-
             "human_impact",
-
             "location",
         ],
 
@@ -366,62 +344,40 @@ async def info():
 
 
 @app.post("/analyze")
-async def analyze(
+def analyze(
     request: BiodiversityRequest,
 ):
-
-    """
-    Analyze an environmental profile.
-
-    Flow:
-
-        Input
-          ↓
-        Validation
-          ↓
-        Environmental reasoning
-          ↓
-        Scientific RAG
-          ↓
-        Structured knowledge
-          ↓
-        GBIF location biodiversity
-          ↓
-        Gemini response
-    """
-
-    # --------------------------------------------------------
-    # Convert Pydantic model to dictionary
-    # --------------------------------------------------------
 
     profile = profile_to_dict(
         request.environment
     )
 
-
-    # --------------------------------------------------------
-    # Validate environment
-    # --------------------------------------------------------
-
     validation = validate_profile(
         profile
     )
 
-
-    if not validation.get("valid", False):
+    if not validation.get(
+        "valid",
+        False
+    ):
 
         raise HTTPException(
+
             status_code=422,
+
             detail={
                 "message": "Invalid environmental data",
+
                 "errors": validation.get(
                     "errors",
                     [],
                 ),
+
                 "warnings": validation.get(
                     "warnings",
                     [],
                 ),
+
                 "completeness_percent":
                     validation.get(
                         "completeness_percent",
@@ -429,11 +385,6 @@ async def analyze(
                     ),
             },
         )
-
-
-    # --------------------------------------------------------
-    # Run biodiversity pipeline
-    # --------------------------------------------------------
 
     try:
 
@@ -462,11 +413,6 @@ async def analyze(
                 f"{str(exc)}"
             ),
         )
-
-
-    # --------------------------------------------------------
-    # Return result
-    # --------------------------------------------------------
 
     return {
 
@@ -517,35 +463,13 @@ async def analyze(
 
 
 @app.post("/chat")
-async def chat(
+def chat(
     request: ChatRequest,
 ):
-
-    """
-    Multi-turn biodiversity conversation.
-
-    The conversation stores:
-
-        - environmental context
-        - user messages
-        - assistant messages
-
-    Memory is currently in-memory and therefore
-    resets when the server restarts.
-    """
-
-    # --------------------------------------------------------
-    # Get/create conversation
-    # --------------------------------------------------------
 
     conversation = get_conversation(
         request.session_id
     )
-
-
-    # --------------------------------------------------------
-    # Update environment if supplied
-    # --------------------------------------------------------
 
     if request.environment is not None:
 
@@ -565,11 +489,6 @@ async def chat(
             {},
         )
 
-
-    # --------------------------------------------------------
-    # Ensure profile exists
-    # --------------------------------------------------------
-
     if not profile:
 
         raise HTTPException(
@@ -582,17 +501,14 @@ async def chat(
             ),
         )
 
-
-    # --------------------------------------------------------
-    # Validate environment
-    # --------------------------------------------------------
-
     validation = validate_profile(
         profile
     )
 
-
-    if not validation.get("valid", False):
+    if not validation.get(
+        "valid",
+        False
+    ):
 
         raise HTTPException(
 
@@ -622,36 +538,16 @@ async def chat(
             },
         )
 
-
-    # --------------------------------------------------------
-    # Save user message
-    # --------------------------------------------------------
-
     add_message(
-
         request.session_id,
-
         "user",
-
         request.question,
     )
 
-
-    # --------------------------------------------------------
-    # Build conversation history
-    # --------------------------------------------------------
-
     chat_history = format_chat_history(
-
         request.session_id,
-
-        max_messages=10,
+        max_messages=6,
     )
-
-
-    # --------------------------------------------------------
-    # Run pipeline
-    # --------------------------------------------------------
 
     try:
 
@@ -681,22 +577,15 @@ async def chat(
             ),
         )
 
-
-    # --------------------------------------------------------
-    # Extract response
-    # --------------------------------------------------------
-
     response = result.get(
         "response",
         {},
     )
 
-
-    # --------------------------------------------------------
-    # Save assistant response
-    # --------------------------------------------------------
-
-    if isinstance(response, dict):
+    if isinstance(
+        response,
+        dict
+    ):
 
         assistant_message = response.get(
             "assessment",
@@ -709,20 +598,11 @@ async def chat(
             response
         )
 
-
     add_message(
-
         request.session_id,
-
         "assistant",
-
         assistant_message,
     )
-
-
-    # --------------------------------------------------------
-    # Return response
-    # --------------------------------------------------------
 
     return {
 
@@ -775,7 +655,7 @@ async def chat(
 
 
 @app.on_event("startup")
-async def startup_event():
+def startup_event():
 
     print("=" * 60)
 

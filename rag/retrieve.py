@@ -2,79 +2,102 @@ from pathlib import Path
 import os
 import re
 
-import chromadb
-from chromadb.utils.embedding_functions import DefaultEmbeddingFunction
+from functools import lru_cache
+
 from pypdf import PdfReader
 
 
-# ==========================================================
+# ============================================================
 # PROJECT PATHS
-# ==========================================================
+# ============================================================
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
+PROJECT_ROOT = Path(
+    __file__
+).resolve().parent.parent
 
-KNOWLEDGE_DIR = PROJECT_ROOT / "knowledge_base"
-CHROMA_DIR = PROJECT_ROOT / "data" / "chroma_db"
+KNOWLEDGE_DIR = (
+    PROJECT_ROOT / "knowledge_base"
+)
 
-COLLECTION_NAME = "environmental_knowledge"
+CHROMA_DIR = (
+    PROJECT_ROOT
+    / "data"
+    / "chroma_db"
+)
+
+COLLECTION_NAME = (
+    "environmental_knowledge"
+)
 
 CHUNK_SIZE = 1000
+
 CHUNK_OVERLAP = 200
 
 
-# ==========================================================
+# ============================================================
 # DEPLOYMENT DETECTION
-# ==========================================================
+# ============================================================
 
-IS_VERCEL = os.getenv("VERCEL") == "1"
+IS_VERCEL = (
+    os.getenv("VERCEL") == "1"
+)
 
 IS_RENDER = (
     os.getenv("RENDER") == "true"
-    or os.getenv("RENDER") == "1"
+    or
+    os.getenv("RENDER") == "1"
 )
 
-IS_DEPLOYED = IS_VERCEL or IS_RENDER
+IS_DEPLOYED = (
+    IS_VERCEL
+    or
+    IS_RENDER
+)
 
 
-# ==========================================================
-# LOCAL EMBEDDING FUNCTION
-# ==========================================================
-
-# Only create the default embedding function for LOCAL use.
-#
-# On Render/Vercel we deliberately avoid it because the
-# embedding model may try to create/download cache files
-# on a read-only filesystem.
-
-embedding_function = None
-
-if not IS_DEPLOYED:
-    embedding_function = DefaultEmbeddingFunction()
-
-
-# ==========================================================
-# LOCAL CHROMA CLIENT
-# ==========================================================
+# ============================================================
+# LOCAL CHROMA
+# ============================================================
 
 client = None
 
+embedding_function = None
+
+
 if not IS_DEPLOYED:
+
+    import chromadb
+
+    from chromadb.utils.embedding_functions import (
+        DefaultEmbeddingFunction
+    )
+
+    embedding_function = (
+        DefaultEmbeddingFunction()
+    )
 
     CHROMA_DIR.mkdir(
         parents=True,
         exist_ok=True
     )
 
-    client = chromadb.PersistentClient(
-        path=str(CHROMA_DIR)
+    client = (
+        chromadb.PersistentClient(
+            path=str(
+                CHROMA_DIR
+            )
+        )
     )
 
 
-# ==========================================================
-# PDF TEXT EXTRACTION
-# ==========================================================
+# ============================================================
+# PDF EXTRACTION
+# ============================================================
 
-def extract_pdf_pages(pdf_path):
+
+def extract_pdf_pages(
+    pdf_path
+):
 
     reader = PdfReader(
         str(pdf_path)
@@ -83,20 +106,27 @@ def extract_pdf_pages(pdf_path):
     pages = []
 
     for page_number, page in enumerate(
+
         reader.pages,
+
         start=1
     ):
 
         try:
 
-            text = page.extract_text() or ""
+            text = (
+                page.extract_text()
+                or ""
+            )
 
-        except Exception as e:
+        except Exception as exc:
 
             print(
-                f"Warning: Could not extract "
-                f"page {page_number} from "
-                f"{pdf_path.name}: {e}"
+
+                f"Could not extract "
+                f"page {page_number} "
+                f"from {pdf_path.name}: "
+                f"{exc}"
             )
 
             text = ""
@@ -106,50 +136,69 @@ def extract_pdf_pages(pdf_path):
         if text:
 
             pages.append({
-                "page": page_number,
-                "text": text
+
+                "page":
+                    page_number,
+
+                "text":
+                    text
             })
 
     return pages
 
 
-# ==========================================================
+# ============================================================
 # CHUNKING
-# ==========================================================
+# ============================================================
+
 
 def chunk_text(
     text,
+
     chunk_size=CHUNK_SIZE,
+
     overlap=CHUNK_OVERLAP
 ):
 
     if not text:
+
         return []
 
     chunks = []
 
     start = 0
 
-    text_length = len(text)
+    text_length = len(
+        text
+    )
 
     while start < text_length:
 
         end = min(
+
             start + chunk_size,
+
             text_length
         )
 
-        chunk = text[start:end].strip()
+        chunk = (
+            text[start:end]
+            .strip()
+        )
 
         if chunk:
 
-            chunks.append(chunk)
+            chunks.append(
+                chunk
+            )
 
         if end >= text_length:
 
             break
 
-        start = end - overlap
+        start = (
+            end - overlap
+        )
 
         if start < 0:
 
@@ -158,10 +207,17 @@ def chunk_text(
     return chunks
 
 
-# ==========================================================
+# ============================================================
 # LOAD SCIENTIFIC CHUNKS
-# ==========================================================
+#
+# Cached for deployed requests.
+# PDFs are parsed only once per running instance.
+# ============================================================
 
+
+@lru_cache(
+    maxsize=1
+)
 def load_scientific_chunks():
 
     chunks = []
@@ -169,42 +225,51 @@ def load_scientific_chunks():
     if not KNOWLEDGE_DIR.exists():
 
         print(
-            f"Knowledge directory not found: "
-            f"{KNOWLEDGE_DIR}"
+
+            "Knowledge directory not found:",
+            KNOWLEDGE_DIR
         )
 
         return chunks
 
-
     pdf_files = list(
-        KNOWLEDGE_DIR.rglob("*.pdf")
+
+        KNOWLEDGE_DIR.rglob(
+            "*.pdf"
+        )
     )
 
     print(
-        f"Found {len(pdf_files)} scientific PDFs."
-    )
 
+        f"Found {len(pdf_files)} "
+        "scientific PDFs."
+    )
 
     for pdf_path in pdf_files:
 
         print(
-            f"Loading scientific source: "
+
+            f"Loading: "
             f"{pdf_path.name}"
         )
 
-        pages = extract_pdf_pages(
-            pdf_path
+        pages = (
+            extract_pdf_pages(
+                pdf_path
+            )
         )
-
 
         for page_data in pages:
 
-            page_number = page_data["page"]
-
-            page_chunks = chunk_text(
-                page_data["text"]
+            page_number = (
+                page_data["page"]
             )
 
+            page_chunks = (
+                chunk_text(
+                    page_data["text"]
+                )
+            )
 
             for chunk_number, chunk in enumerate(
                 page_chunks
@@ -212,32 +277,39 @@ def load_scientific_chunks():
 
                 chunks.append({
 
-                    "text": chunk,
+                    "text":
+                        chunk,
 
-                    "source": pdf_path.name,
+                    "source":
+                        pdf_path.name,
 
-                    "source_path": str(
-                        pdf_path.relative_to(
-                            PROJECT_ROOT
-                        )
-                    ),
+                    "source_path":
+                        str(
+                            pdf_path.relative_to(
+                                PROJECT_ROOT
+                            )
+                        ),
 
-                    "page": page_number,
+                    "page":
+                        page_number,
 
-                    "chunk": chunk_number
+                    "chunk":
+                        chunk_number
                 })
 
-
     print(
-        f"Loaded {len(chunks)} scientific chunks."
+
+        f"Loaded {len(chunks)} "
+        "scientific chunks."
     )
 
     return chunks
 
 
-# ==========================================================
+# ============================================================
 # KEYWORD SCORING
-# ==========================================================
+# ============================================================
+
 
 def keyword_score(
     query,
@@ -245,52 +317,52 @@ def keyword_score(
 ):
 
     query_words = set(
+
         re.findall(
+
             r"\b[a-zA-Z][a-zA-Z-]+\b",
+
             query.lower()
         )
     )
 
-
     text_words = set(
+
         re.findall(
+
             r"\b[a-zA-Z][a-zA-Z-]+\b",
+
             text.lower()
         )
     )
-
 
     if not query_words:
 
         return 0
 
+    return len(
 
-    overlap = (
         query_words.intersection(
             text_words
         )
     )
 
 
-    return len(overlap)
+# ============================================================
+# DEPLOYED RETRIEVAL
+# ============================================================
 
-
-# ==========================================================
-# DEPLOYMENT-SAFE SCIENTIFIC RETRIEVAL
-# ==========================================================
 
 def retrieve_deployed_evidence(
+
     query,
-    top_k=8
+
+    top_k=5
 ):
 
-    print(
-        "Using deployment-safe scientific retrieval."
+    chunks = (
+        load_scientific_chunks()
     )
-
-
-    chunks = load_scientific_chunks()
-
 
     if not chunks:
 
@@ -300,17 +372,16 @@ def retrieve_deployed_evidence(
 
         return []
 
-
     scored = []
-
 
     for item in chunks:
 
         score = keyword_score(
+
             query,
+
             item["text"]
         )
-
 
         if score > 0:
 
@@ -318,47 +389,53 @@ def retrieve_deployed_evidence(
 
                 **item,
 
-                "_score": score
+                "_score":
+                    score
             })
 
-
     scored.sort(
-        key=lambda item: item["_score"],
+
+        key=lambda item:
+            item["_score"],
+
         reverse=True
     )
 
-
     results = []
-
 
     for item in scored[:top_k]:
 
         results.append({
 
-            "text": item["text"],
+            "text":
+                item["text"],
 
-            "source": item["source"],
+            "source":
+                item["source"],
 
-            "page": item["page"],
+            "page":
+                item["page"],
 
-            "chunk": item["chunk"],
+            "chunk":
+                item["chunk"],
 
-            "distance": None
+            "distance":
+                None
         })
 
-
     print(
-        f"Retrieved {len(results)} "
-        f"scientific evidence chunks."
-    )
 
+        f"Retrieved {len(results)} "
+        "scientific evidence chunks."
+    )
 
     return results
 
 
-# ==========================================================
+# ============================================================
 # LOCAL CHROMA COLLECTION
-# ==========================================================
+# ============================================================
+
 
 def get_local_collection():
 
@@ -368,90 +445,100 @@ def get_local_collection():
             "Local Chroma client is not initialized."
         )
 
-
     try:
 
         return client.get_collection(
 
             name=COLLECTION_NAME,
 
-            embedding_function=embedding_function
+            embedding_function=(
+                embedding_function
+            )
         )
 
-
-    except Exception as e:
+    except Exception as exc:
 
         raise RuntimeError(
 
             "Knowledge base collection was not found. "
-
             "Run 'python rag/ingest.py' first "
             "when running locally."
 
-        ) from e
+        ) from exc
 
 
-# ==========================================================
-# RETRIEVE EVIDENCE
-# ==========================================================
+# ============================================================
+# MAIN RETRIEVAL
+# ============================================================
+
 
 def retrieve_evidence(
+
     query,
-    top_k=8
+
+    top_k=5
 ):
 
-    if not query or not query.strip():
+    if (
+        not query
+        or
+        not query.strip()
+    ):
 
         return []
 
-
-    # ------------------------------------------------------
+    # --------------------------------------------------------
     # RENDER / VERCEL
-    # ------------------------------------------------------
+    # --------------------------------------------------------
 
     if IS_DEPLOYED:
 
         return retrieve_deployed_evidence(
+
             query,
+
             top_k=top_k
         )
 
+    # --------------------------------------------------------
+    # LOCAL
+    # --------------------------------------------------------
 
-    # ------------------------------------------------------
-    # LOCAL DEVELOPMENT
-    # ------------------------------------------------------
-
-    collection = get_local_collection()
-
+    collection = (
+        get_local_collection()
+    )
 
     results = collection.query(
 
-        query_texts=[query],
+        query_texts=[
+            query
+        ],
 
         n_results=top_k
     )
 
+    documents = (
+        results.get(
+            "documents",
+            [[]]
+        )[0]
+    )
 
-    documents = results.get(
-        "documents",
-        [[]]
-    )[0]
+    metadatas = (
+        results.get(
+            "metadatas",
+            [[]]
+        )[0]
+    )
 
-
-    metadatas = results.get(
-        "metadatas",
-        [[]]
-    )[0]
-
-
-    distances = results.get(
-        "distances",
-        [[]]
-    )[0]
-
+    distances = (
+        results.get(
+            "distances",
+            [[]]
+        )[0]
+    )
 
     evidence = []
-
 
     for index, document in enumerate(
         documents
@@ -461,77 +548,90 @@ def retrieve_evidence(
 
             metadatas[index]
 
-            if index < len(metadatas)
+            if index <
+            len(metadatas)
 
             else {}
         )
-
 
         distance = (
 
             distances[index]
 
-            if index < len(distances)
+            if index <
+            len(distances)
 
             else None
         )
 
-
         evidence.append({
 
-            "text": document,
+            "text":
+                document,
 
-            "source": metadata.get(
-                "source",
-                "Unknown source"
-            ),
+            "source":
+                metadata.get(
+                    "source",
+                    "Unknown source"
+                ),
 
-            "page": metadata.get(
-                "page",
-                "Unknown"
-            ),
+            "page":
+                metadata.get(
+                    "page",
+                    "Unknown"
+                ),
 
-            "chunk": metadata.get(
-                "chunk",
-                "Unknown"
-            ),
+            "chunk":
+                metadata.get(
+                    "chunk",
+                    "Unknown"
+                ),
 
-            "distance": distance
+            "distance":
+                distance
         })
-
 
     return evidence
 
 
-# ==========================================================
+# ============================================================
 # TEST
-# ==========================================================
+# ============================================================
+
 
 if __name__ == "__main__":
 
     query = (
+
         "How does soil organic carbon "
         "affect biodiversity and soil health?"
     )
 
-
     results = retrieve_evidence(
+
         query,
+
         top_k=5
     )
 
-
     print()
 
-    print("=" * 60)
+    print(
+        "=" * 60
+    )
 
-    print("RETRIEVAL TEST")
+    print(
+        "RETRIEVAL TEST"
+    )
 
-    print("=" * 60)
-
+    print(
+        "=" * 60
+    )
 
     for index, item in enumerate(
+
         results,
+
         start=1
     ):
 
@@ -542,21 +642,17 @@ if __name__ == "__main__":
         )
 
         print(
-            f"Source   : "
-            f"{item['source']}"
+            "Source:",
+            item["source"]
         )
 
         print(
-            f"Page     : "
-            f"{item['page']}"
+            "Page:",
+            item["page"]
         )
 
         print(
-            f"Distance : "
-            f"{item['distance']}"
-        )
-
-        print(
-            f"Text     : "
-            f"{item['text'][:500]}..."
+            "Text:",
+            item["text"][:500],
+            "..."
         )
